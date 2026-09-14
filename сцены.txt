@@ -1,0 +1,50 @@
+«Мини-экономика» — Полный переход на Jetpack Compose
+Ниже — готовый набор файлов. Структура проекта:
+
+text
+app/src/main/java/com/minieconomy/
+├── ui/
+│   ├── theme/
+│   │   ├── Color.kt
+│   │   ├── Type.kt
+│   │   ├── Shape.kt
+│   │   └── Theme.kt
+│   ├── navigation/
+│   │   ├── Routes.kt
+│   │   └── NavGraph.kt
+│   ├── components/
+│   │   ├── StatBar.kt
+│   │   ├── Chip.kt
+│   │   ├── ActionButton.kt
+│   │   └── CardContainer.kt
+│   ├── screens/
+│   │   ├── onboarding/OnboardingScreen.kt
+│   │   ├── pet/PetScreen.kt
+│   │   ├── banks/BankScreen.kt
+│   │   ├── shop/ShopScreen.kt
+│   │   ├── minigames/SuppliersGame.kt
+│   │   ├── minigames/PricerGame.kt
+│   │   ├── minigames/CashierGame.kt
+│   │   ├── report/ReportScreen.kt
+│   │   ├── journal/JournalScreen.kt
+│   │   └── quests/QuestsScreen.kt
+│   └── MainActivity.kt
+
+
+
+Итог
+Компонент	Файл	Строк
+Тема	Color.kt, Type.kt, Shape.kt, Theme.kt	~150
+Компоненты	CommonComponents.kt	~80
+Навигация	Routes.kt, NavGraph.kt	~90
+MainActivity	MainActivity.kt	~25
+Онбординг	OnboardingScreen.kt	~90
+Питомец	PetScreen.kt	~120
+Банки + DnD	BankScreen.kt	~180
+Магазин	ShopScreen.kt	~110
+Закупка	SuppliersGame.kt	~100
+Ценник	PricerGame.kt	~85
+Касса	CashierGame.kt	~120
+Отчёт	ReportScreen.kt	~90
+Журнал	JournalScreen.kt	~110
+Задания	QuestsScreen.kt	~80
