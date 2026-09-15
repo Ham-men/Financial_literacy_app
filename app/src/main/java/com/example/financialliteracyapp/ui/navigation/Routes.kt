@@ -5,6 +5,8 @@ object Routes {
     const val PET = "pet"
     const val BANKS = "banks"
     const val SHOP = "shop"
+    const val INVENTORY = "inventory"
+    const val PNL = "pnl"
     const val SUPPLIERS = "minigame_suppliers"
     const val PRICER = "minigame_pricer"
     const val CASHIER = "minigame_cashier"

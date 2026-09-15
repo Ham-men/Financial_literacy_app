@@ -1,3 +1,63 @@
 <resources>
     <string name="app_name">financial literacy app</string>
+    <string name="town_name">Копилкино</string>
+    <string name="currency_symbol">₡</string>
+
+    <string name="central_bank">Центральный Банк Копилкино</string>
+
+    <!-- Районы -->
+    <string name="district_market">Рынок</string>
+    <string name="district_residential">Спальный</string>
+    <string name="district_tech">Техно-парк</string>
+    <string name="district_center">Центр</string>
+    <string name="district_industrial">Промзона</string>
+    <string name="district_rich">Богатый</string>
+
+    <!-- Карта -->
+    <string name="map_title">Карта Копилкино</string>
+    <string name="map_subtitle">Нажми район или жёлтый щит — свободный участок</string>
+    <string name="map_legend_lot">Пустой участок — можно купить и построить</string>
+    <string name="map_legend_rich">Богатый квартал</string>
+    <string name="map_legend_poor">Скромный / промзона</string>
+    <string name="map_you_are_here">Ларёк Финни</string>
+    <string name="lot_for_sale">продаётся</string>
+    <string name="lot_count_1">1 участок · продаётся</string>
+    <string name="lot_count_2">2 участка · продаётся</string>
+    <string name="lot_count_3">3 участка · продаётся</string>
+    <string name="sector_rich">Богатый квартал</string>
+    <string name="sector_center">Центр</string>
+    <string name="sector_market">Рынок</string>
+    <string name="sector_residential">Спальный</string>
+    <string name="sector_industrial">Промзона</string>
+    <string name="sector_tech">Техно-парк</string>
+
+    <!-- Боты -->
+    <string name="bot_worker">Рабочий</string>
+    <string name="bot_engineer">Инженер</string>
+    <string name="bot_manager">Менеджер</string>
+    <string name="bot_pensioner">Пенсионер</string>
+    <string name="bot_student">Студент</string>
+    <string name="bot_elite">Элита</string>
+
+    <!-- Мини-игры -->
+    <string name="minigame_scout">Разведка</string>
+    <string name="minigame_supplier">Найди дешевле</string>
+    <string name="minigame_shelves">Полки</string>
+    <string name="minigame_pricing">Ценник</string>
+    <string name="minigame_cashier">Касса</string>
+    <string name="minigame_ledger">Журнал</string>
+    <string name="minigame_inventory">Инвентаризация</string>
+    <string name="minigame_envelopes">Разложи по конвертам</string>
+    <string name="minigame_balance">Весы</string>
+    <string name="minigame_blueprint">Чертёж</string>
+    <string name="minigame_vacancy">Вакансия</string>
+
+    <!-- UI -->
+    <string name="btn_open_shop">Открыть магазин</string>
+    <string name="btn_hire">Нанять</string>
+    <string name="btn_bank">Банк</string>
+    <string name="btn_map">Карта</string>
+    <string name="label_salary">Зарплата</string>
+    <string name="label_profit">Прибыль</string>
+    <string name="label_cash">Наличные</string>
 </resources>

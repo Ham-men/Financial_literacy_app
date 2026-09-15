@@ -13,6 +13,8 @@ import com.example.financialliteracyapp.ui.screens.onboarding.OnboardingScreen
 import com.example.financialliteracyapp.ui.screens.pet.PetScreen
 import com.example.financialliteracyapp.ui.screens.quests.QuestsScreen
 import com.example.financialliteracyapp.ui.screens.report.ReportScreen
+import com.example.financialliteracyapp.ui.screens.shop.InventoryScreen
+import com.example.financialliteracyapp.ui.screens.shop.PnLScreen
 import com.example.financialliteracyapp.ui.screens.shop.ShopScreen
 
 @Composable
@@ -46,11 +48,18 @@ fun AppNavGraph(
                 onOpenPricer     = { navController.navigate(Routes.PRICER) },
                 onOpenCashier    = { navController.navigate(Routes.CASHIER) },
                 onOpenJournal    = { navController.navigate(Routes.JOURNAL) },
+                onOpenInventory  = { navController.navigate(Routes.INVENTORY) },
                 onSimulateBots   = { navController.navigate(Routes.REPORT) { popUpTo(Routes.SHOP) { inclusive = false } } }
             )
         }
         composable(Routes.SUPPLIERS) {
             SuppliersGame(onFinish = { navController.popBackStack() })
+        }
+        composable(Routes.INVENTORY) {
+            InventoryScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.PNL) {
+            PnLScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.PRICER) {
             PricerGame(onFinish = { navController.popBackStack() })

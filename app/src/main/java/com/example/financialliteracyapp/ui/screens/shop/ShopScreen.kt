@@ -26,6 +26,8 @@ fun ShopScreen(
     onOpenPricer: () -> Unit,
     onOpenCashier: () -> Unit,
     onOpenJournal: () -> Unit,
+    onOpenInventory: () -> Unit,
+    onOpenPnL: () -> Unit,
     onSimulateBots: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -109,6 +111,12 @@ fun ShopScreen(
             Modifier.fillMaxWidth(), onClick = {
                 vm.simulateBots { onSimulateBots?.invoke() }
             })
+        Spacer(Modifier.height(8.dp))
+        BigActionButton("📦 Товарный журнал", PrimaryDark,
+            Modifier.fillMaxWidth(), onClick = onOpenInventory)
+        Spacer(Modifier.height(8.dp))
+        BigActionButton("📈 P&L (Прибыли и убытки)", PrimaryDark,
+            Modifier.fillMaxWidth(), onClick = onOpenPnL)
         Spacer(Modifier.height(8.dp))
         BigActionButton("▶ Открыть магазин (день)", Primary,
             Modifier.fillMaxWidth(), onClick = onOpenCashier)

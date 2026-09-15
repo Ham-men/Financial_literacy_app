@@ -7,4 +7,43 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- Основные цвета Копилкино -->
+    <!-- Основные цвета Копилкино -->
+    <color name="kopilkino_primary">#1565C0</color>
+    <color name="kopilkino_primary_dark">#0D47A1</color>
+    <color name="kopilkino_accent">#FFB300</color>
+    <color name="kopilkino_coin">#FFD54F</color>
+    <color name="kopilkino_success">#43A047</color>
+    <color name="kopilkino_warning">#FF8F00</color>
+    <color name="kopilkino_error">#E53935</color>
+    <color name="kopilkino_bg">#FFF8E1</color>
+    <color name="kopilkino_surface">#FFFFFF</color>
+    <color name="kopilkino_text">#212121</color>
+    <color name="kopilkino_text_secondary">#757575</color>
+
+    <!-- Районы -->
+    <color name="district_market">#FF8A65</color>
+    <color name="district_residential">#81C784</color>
+    <color name="district_tech">#4FC3F7</color>
+    <color name="district_center">#BA68C8</color>
+    <color name="district_industrial">#90A4AE</color>
+    <color name="district_rich">#FFD54F</color>
+
+    <!-- Карта -->
+    <color name="map_sky">#E3F2FD</color>
+    <color name="map_header">#1565C0</color>
+    <color name="map_lot_badge">#F9A825</color>
+    <color name="map_lot_text">#4E342E</color>
+    <color name="map_overlay_rich">#CCF9A825</color>
+    <color name="map_overlay_center">#CC8E24AA</color>
+    <color name="map_overlay_market">#CCFB8C00</color>
+    <color name="map_overlay_residential">#CC43A047</color>
+    <color name="map_overlay_industrial">#CC607D8B</color>
+    <color name="map_overlay_tech">#CC0288D1</color>
+    <color name="map_legend_bg">#FFFFFF</color>
+
+    <!-- Питомцы / настроение -->
+    <color name="pet_happy">#66BB6A</color>
+    <color name="pet_neutral">#FFA726</color>
+    <color name="pet_sad">#EF5350</color>
 </resources>
