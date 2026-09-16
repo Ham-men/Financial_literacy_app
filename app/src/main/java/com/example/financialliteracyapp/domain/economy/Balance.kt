@@ -16,6 +16,12 @@ object Balance {
     const val LEMONADE_BASE_PRICE = 8
     const val SHOP_RENT_MARKET = 20
 
+    const val CASHIER_SALARY = 80
+
+    const val LOT_PRICE = 300
+    const val LOT_SELL_PRICE = 200
+    const val LOT_RENT_PER_DAY = 10
+
     const val PURCHASE_THRESHOLD = 0.30
     const val REF_INCOME = 1500.0
 

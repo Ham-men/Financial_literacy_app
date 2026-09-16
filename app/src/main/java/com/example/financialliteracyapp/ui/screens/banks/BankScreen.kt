@@ -26,9 +26,9 @@ import com.example.financialliteracyapp.ui.theme.*
 import kotlin.math.roundToInt
 
 private enum class BankType(val title: String, val emoji: String, val color: Color, val hint: String) {
-    SPEND("Тратить", "🟢", BankSpend, "На еду, игрушки,\nнужды магазина"),
-    SAVE("Копить", "🔵", BankSave, "Неприкосновенный\nзапас на цель"),
-    GROW("Вкладывать", "🟡", BankGrow, "Растёт на %,\nно есть риск")
+    NEED("Нужное", "🟢", BankSpend, "Корм, вода,\nуход, подстилка"),
+    WANT("Желаемое", "🔵", BankSave, "Мячик, бантик,\nкартина, торт"),
+    SAVE("Копилка", "🟡", BankGrow, "На цель:\nмячик / палатка / набор")
 }
 
 private data class Coin(val id: Long, val value: Int, var offset: Offset, var placed: BankType?)
@@ -40,7 +40,7 @@ fun BankScreen(onBack: () -> Unit) {
     val vm: BankViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = BankViewModel.factory(repo))
     val wallet by vm.wallet.collectAsState()
     // показываем текущее распределение из Room, если есть
-    val totalFromDb = (wallet?.cash ?: 500) + (wallet?.spend ?: 0) + (wallet?.save ?: 0) + (wallet?.invest ?: 0)
+    val totalFromDb = (wallet?.cash ?: 500) + (wallet?.needPlan ?: 0) + (wallet?.wantPlan ?: 0) + (wallet?.savePlan ?: 0)
 
     var coins by remember {
         mutableStateOf(
@@ -125,10 +125,10 @@ fun BankScreen(onBack: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             enabled = coins.all { it.placed != null }
         ) {
-            val spend = coins.filter { it.placed == BankType.SPEND }.sumOf { it.value }
+            val need = coins.filter { it.placed == BankType.NEED }.sumOf { it.value }
+            val want = coins.filter { it.placed == BankType.WANT }.sumOf { it.value }
             val save = coins.filter { it.placed == BankType.SAVE }.sumOf { it.value }
-            val grow = coins.filter { it.placed == BankType.GROW }.sumOf { it.value }
-            vm.confirm(spend, save, grow)
+            vm.confirm(need, want, save)
             onBack()
         }
     }

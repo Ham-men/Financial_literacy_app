@@ -18,7 +18,8 @@ import com.example.financialliteracyapp.ui.theme.*
 @Composable
 fun PetScreen(
     onOpenBanks: () -> Unit,
-    onOpenShop: () -> Unit,
+    onOpenMarket: () -> Unit,
+    onOpenKiosk: () -> Unit,
     onOpenQuests: () -> Unit,
     onOpenReport: () -> Unit
 ) {
@@ -51,7 +52,8 @@ fun PetScreen(
         bottomBar = {
             BottomNav(
                 onOpenBanks = onOpenBanks,
-                onOpenShop = onOpenShop,
+                onOpenMarket = onOpenMarket,
+                onOpenKiosk = onOpenKiosk,
                 onOpenQuests = onOpenQuests,
                 onOpenReport = onOpenReport
             )
@@ -106,14 +108,16 @@ fun PetScreen(
 @Composable
 private fun BottomNav(
     onOpenBanks: () -> Unit,
-    onOpenShop: () -> Unit,
+    onOpenMarket: () -> Unit,
+    onOpenKiosk: () -> Unit,
     onOpenQuests: () -> Unit,
     onOpenReport: () -> Unit
 ) {
     NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
         NavigationBarItem(selected = true, onClick = {}, icon = { Text("🏠") }, label = { Text("Дом") })
         NavigationBarItem(selected = false, onClick = onOpenBanks, icon = { Text("🏦") }, label = { Text("Банки") })
-        NavigationBarItem(selected = false, onClick = onOpenShop, icon = { Text("🏪") }, label = { Text("Магазин") })
+        NavigationBarItem(selected = false, onClick = onOpenMarket, icon = { Text("🏪") }, label = { Text("Магазин") })
+        NavigationBarItem(selected = false, onClick = onOpenKiosk, icon = { Text("🍋") }, label = { Text("Ларёк") })
         NavigationBarItem(selected = false, onClick = onOpenQuests, icon = { Text("📋") }, label = { Text("Задания") })
         NavigationBarItem(selected = false, onClick = onOpenReport, icon = { Text("📊") }, label = { Text("Отчёт") })
     }

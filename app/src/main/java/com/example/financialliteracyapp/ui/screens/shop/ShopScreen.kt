@@ -14,17 +14,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.financialliteracyapp.data.AppContainer
-import com.example.financialliteracyapp.domain.economy.BotBrain
 import com.example.financialliteracyapp.ui.components.AppCard
 import com.example.financialliteracyapp.ui.components.BigActionButton
 import com.example.financialliteracyapp.ui.theme.*
 
+/** Back office ларька: журнал, инвентарь, P&L, симуляция дня. */
 @Composable
 fun ShopScreen(
     onBack: () -> Unit,
-    onBuyStock: () -> Unit,
-    onOpenPricer: () -> Unit,
-    onOpenCashier: () -> Unit,
     onOpenJournal: () -> Unit,
     onOpenInventory: () -> Unit,
     onOpenPnL: () -> Unit,
@@ -39,8 +36,6 @@ fun ShopScreen(
     val cash = wallet?.cash ?: 500
     val stock = shop?.stock ?: 100
     val costPrice = shop?.costPrice ?: 3
-    val priceInt = shop?.price ?: 8
-    var sliderPrice by remember(priceInt) { mutableFloatStateOf(priceInt.toFloat()) }
 
     Column(
         modifier = Modifier
@@ -50,7 +45,7 @@ fun ShopScreen(
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("🍋 Ларёк с лимонадом",
+            Text("📊 Учёт ларька",
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.weight(1f))
             Surface(shape = MaterialTheme.shapes.small,
@@ -76,41 +71,8 @@ fun ShopScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        // Цена
-        AppCard {
-            Text("💵 Цена за единицу",
-                fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Spacer(Modifier.height(8.dp))
-            Text("${sliderPrice.toInt()} ₡",
-                fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Accent,
-                modifier = Modifier.align(Alignment.CenterHorizontally))
-            Slider(
-                value = sliderPrice,
-                onValueChange = { sliderPrice = it },
-                valueRange = 1f..30f,
-                steps = 57,
-                onValueChangeFinished = { vm.setPrice(sliderPrice.toInt()) }
-            )
-            Text("Прогноз: ~${BotBrain.estimateBuyers(sliderPrice)} покупателей/день",
-                fontSize = 14.sp, color = TextSecondary,
-                modifier = Modifier.align(Alignment.CenterHorizontally))
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        BigActionButton("🛒 Закупить товар", Accent,
-            Modifier.fillMaxWidth(), onClick = onBuyStock)
-        Spacer(Modifier.height(8.dp))
-        BigActionButton("💵 Открыть ценник", PrimaryDark,
-            Modifier.fillMaxWidth(), onClick = onOpenPricer)
-        Spacer(Modifier.height(8.dp))
         BigActionButton("🧾 Кассовая книга", PrimaryDark,
             Modifier.fillMaxWidth(), onClick = onOpenJournal)
-        Spacer(Modifier.height(8.dp))
-        BigActionButton("🤖 Симулировать день (20 ботов)", Primary,
-            Modifier.fillMaxWidth(), onClick = {
-                vm.simulateBots { onSimulateBots?.invoke() }
-            })
         Spacer(Modifier.height(8.dp))
         BigActionButton("📦 Товарный журнал", PrimaryDark,
             Modifier.fillMaxWidth(), onClick = onOpenInventory)
@@ -118,10 +80,11 @@ fun ShopScreen(
         BigActionButton("📈 P&L (Прибыли и убытки)", PrimaryDark,
             Modifier.fillMaxWidth(), onClick = onOpenPnL)
         Spacer(Modifier.height(8.dp))
-        BigActionButton("▶ Открыть магазин (день)", Primary,
-            Modifier.fillMaxWidth(), onClick = onOpenCashier)
+        BigActionButton("🤖 Симулировать день (20 ботов)", Primary,
+            Modifier.fillMaxWidth(), onClick = {
+                vm.simulateBots { onSimulateBots?.invoke() }
+            })
 
         Spacer(Modifier.height(24.dp))
     }
 }
-

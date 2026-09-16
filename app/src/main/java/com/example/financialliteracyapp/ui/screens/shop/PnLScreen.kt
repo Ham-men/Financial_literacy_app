@@ -159,12 +159,7 @@ private fun EnvelopeRow(label: String, key: String, currentValue: Int, color: an
                 onChange(v.toIntOrNull() ?: 0)
             },
             modifier = Modifier.width(100.dp),
-            singleLine = true,
-            keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions.Default,
-            colors = androidx.compose.material3.TextFieldDefaults.outlinedTextFieldColors(
-                focusedBorderColor = color,
-                unfocusedBorderColor = color.copy(alpha = 0.5f)
-            )
+            singleLine = true
         )
     }
 }

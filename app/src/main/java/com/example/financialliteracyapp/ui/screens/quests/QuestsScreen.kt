@@ -5,38 +5,34 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.financialliteracyapp.data.AppContainer
+import com.example.financialliteracyapp.data.local.entity.QuestEntity
 import com.example.financialliteracyapp.ui.components.AppCard
 import com.example.financialliteracyapp.ui.components.BigActionButton
 import com.example.financialliteracyapp.ui.theme.*
 
-private data class Quest(
-    val title: String,
-    val reward: Int,
-    val progress: Int,
-    val target: Int
-)
-
-private val quests = listOf(
-    Quest("Накопи 100 ₡ за день", 50, 60, 100),
-    Quest("Продай 20 лимонадов", 30, 12, 20),
-    Quest("Покорми питомца 3 раза", 20, 3, 3),
-    Quest("Не потрать всё в «Тратить»", 40, 1, 1)
-)
-
 @Composable
 fun QuestsScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    val repo = remember { AppContainer.repo(context) }
+    val vm: QuestViewModel = viewModel(factory = QuestViewModel.factory(repo))
+    val quests by vm.quests.collectAsState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
-        Text("📋 Задания дня",
+        Text("📋 Задания",
             style = MaterialTheme.typography.headlineMedium)
         Text("Выполняй задания Дедушки Барсука — получай награды",
             fontSize = 13.sp, color = TextSecondary)
@@ -48,7 +44,7 @@ fun QuestsScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(quests) { quest ->
-                QuestItem(quest)
+                QuestItem(quest = quest)
             }
         }
 
@@ -58,18 +54,34 @@ fun QuestsScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun QuestItem(quest: Quest) {
+private fun QuestItem(quest: QuestEntity) {
+    val progress = if (quest.target > 0) (quest.progress.toFloat() / quest.target).coerceIn(0f, 1f) else 0f
+    val topicIcon = when (quest.topic) {
+        "PLANNING" -> "📅"
+        "SAVING" -> "🐷"
+        "SPENDING" -> "💳"
+        else -> "📋"
+    }
+    val topicLabel = when (quest.topic) {
+        "PLANNING" -> "Планирование"
+        "SAVING" -> "Сбережения"
+        "SPENDING" -> "Покупки"
+        else -> quest.topic
+    }
+
     AppCard {
-        Row {
-            Text(quest.title,
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("$topicIcon ${quest.title}",
                 Modifier.weight(1f),
                 fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Text("+${quest.reward} ₡",
                 fontWeight = FontWeight.Bold, color = Accent)
         }
         Spacer(Modifier.height(8.dp))
+        Text(topicLabel, fontSize = 12.sp, color = TextSecondary)
+        Spacer(Modifier.height(4.dp))
         LinearProgressIndicator(
-            progress = { quest.progress.toFloat() / quest.target },
+            progress = progress,
             color = Primary,
             modifier = Modifier.fillMaxWidth().height(8.dp)
         )

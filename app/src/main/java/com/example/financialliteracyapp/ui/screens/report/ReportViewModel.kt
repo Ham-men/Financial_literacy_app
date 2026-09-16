@@ -16,11 +16,17 @@ class ReportViewModel(
     val shop = repo.observeShop().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val wallet = repo.observeWallet().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val day = prefs.currentDay.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1)
+    val cashierHired = prefs.cashierHired.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    val lotPurchased = prefs.lotPurchased.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     fun nextDay(onDone: () -> Unit) {
         viewModelScope.launch {
             val cur = day.value
             prefs.setCurrentDay(cur + 1)
+            // Зарплата Милы — расход дня, списывается если хватает баланса
+            repo.payCashierSalary(cashierHired.value)
+            // Доход от второго здания — пассивная аренда
+            repo.payLotRent(lotPurchased.value)
             repo.resetDay()
             onDone()
         }

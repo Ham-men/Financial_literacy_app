@@ -19,6 +19,9 @@ class UserPrefs(private val context: Context) {
     val difficulty: Flow<Int> = context.dataStore.data.map { it[DIFFICULTY] ?: 1 }
     val onboardingDone: Flow<Boolean> = context.dataStore.data.map { it[ONBOARDING] ?: false }
     val currentDay: Flow<Int> = context.dataStore.data.map { it[DAY] ?: 1 }
+    val cashierHired: Flow<Boolean> = context.dataStore.data.map { it[CASHIER] ?: false }
+    val lotPurchased: Flow<Boolean> = context.dataStore.data.map { it[LOT_PURCHASED] ?: false }
+    val lotType: Flow<Int> = context.dataStore.data.map { it[LOT_TYPE] ?: 0 }
 
     suspend fun setPetName(name: String) {
         context.dataStore.edit { it[PET_NAME] = name }
@@ -40,11 +43,26 @@ class UserPrefs(private val context: Context) {
         context.dataStore.edit { it[DAY] = day }
     }
 
+    suspend fun setCashierHired(hired: Boolean) {
+        context.dataStore.edit { it[CASHIER] = hired }
+    }
+
+    suspend fun setLotPurchased(purchased: Boolean) {
+        context.dataStore.edit { it[LOT_PURCHASED] = purchased }
+    }
+
+    suspend fun setLotType(type: Int) {
+        context.dataStore.edit { it[LOT_TYPE] = type }
+    }
+
     companion object {
         private val PET_NAME = stringPreferencesKey("pet_name")
         private val SOUND = booleanPreferencesKey("sound")
         private val DIFFICULTY = intPreferencesKey("difficulty")
         private val ONBOARDING = booleanPreferencesKey("onboarding_done")
         private val DAY = intPreferencesKey("current_day")
+        private val CASHIER = booleanPreferencesKey("cashier_hired")
+        private val LOT_PURCHASED = booleanPreferencesKey("lot_purchased")
+        private val LOT_TYPE = intPreferencesKey("lot_type")
     }
 }
