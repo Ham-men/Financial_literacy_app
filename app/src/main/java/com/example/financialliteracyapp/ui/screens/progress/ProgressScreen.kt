@@ -20,7 +20,7 @@ import com.example.financialliteracyapp.ui.theme.*
 
 /** Прогресс (День 21): задания, цель, итог последнего дня. */
 @Composable
-fun ProgressScreen(onBack: () -> Unit) {
+fun ProgressScreen(onBack: () -> Unit, embedded: Boolean = false) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
     val prefs = remember { AppContainer.prefs(context) }
@@ -161,7 +161,9 @@ fun ProgressScreen(onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(16.dp))
-        BigActionButton("← Назад", PrimaryDark, Modifier.fillMaxWidth(), onClick = onBack)
-        Spacer(Modifier.height(24.dp))
+        if (!embedded) {
+            BigActionButton("← Назад", PrimaryDark, Modifier.fillMaxWidth(), onClick = onBack)
+            Spacer(Modifier.height(24.dp))
+        }
     }
 }

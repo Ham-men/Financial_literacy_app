@@ -20,7 +20,7 @@ import com.example.financialliteracyapp.ui.components.BigActionButton
 import com.example.financialliteracyapp.ui.theme.*
 
 @Composable
-fun QuestsScreen(onBack: () -> Unit) {
+fun QuestsScreen(onBack: () -> Unit, embedded: Boolean = false) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
     val vm: QuestViewModel = viewModel(factory = QuestViewModel.factory(repo))
@@ -49,7 +49,9 @@ fun QuestsScreen(onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(12.dp))
-        BigActionButton("← Назад", PrimaryDark, Modifier.fillMaxWidth(), onClick = onBack)
+        if (!embedded) {
+            BigActionButton("← Назад", PrimaryDark, Modifier.fillMaxWidth(), onClick = onBack)
+        }
     }
 }
 

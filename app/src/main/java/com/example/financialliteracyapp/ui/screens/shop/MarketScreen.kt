@@ -21,7 +21,7 @@ import com.example.financialliteracyapp.ui.theme.*
 import androidx.compose.ui.graphics.Color
 
 @Composable
-fun MarketScreen(onBack: () -> Unit) {
+fun MarketScreen(onBack: () -> Unit, embedded: Boolean = false) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
     val vm: MarketViewModel = viewModel(factory = MarketViewModel.factory(repo))
@@ -67,7 +67,7 @@ fun MarketScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("🏪 Магазин", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text("🛍️ Витрина", fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = Primary.copy(alpha = 0.1f),
@@ -87,7 +87,9 @@ fun MarketScreen(onBack: () -> Unit) {
                 "🐷 $petName: 🍖$hunger 😊$mood ⚡$energy",
                 fontSize = 11.sp, color = TextSecondary, modifier = Modifier.weight(1f)
             )
-            BigActionButton("◀", PrimaryDark, Modifier.width(48.dp).height(36.dp)) { onBack() }
+            if (!embedded) {
+                BigActionButton("◀", PrimaryDark, Modifier.width(48.dp).height(36.dp)) { onBack() }
+            }
         }
 
         Spacer(Modifier.height(6.dp))

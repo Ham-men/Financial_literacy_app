@@ -19,7 +19,7 @@ import com.example.financialliteracyapp.ui.components.BigActionButton
 import com.example.financialliteracyapp.ui.theme.*
 
 @Composable
-fun JournalScreen(onFinish: () -> Unit) {
+fun JournalScreen(onFinish: () -> Unit, embedded: Boolean = false) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
     val vm: JournalViewModel = viewModel(factory = JournalViewModel.factory(repo))
@@ -151,10 +151,12 @@ fun JournalScreen(onFinish: () -> Unit) {
 
         Spacer(Modifier.height(12.dp))
 
-        BigActionButton(
-            text = if (gameList != null && index >= gameList.size) "✅ Готово" else if (txs.isEmpty()) "Назад" else "✅ Готово",
-            color = Primary,
-            modifier = Modifier.fillMaxWidth()
-        ) { onFinish() }
+        if (!embedded) {
+            BigActionButton(
+                text = if (gameList != null && index >= gameList.size) "✅ Готово" else if (txs.isEmpty()) "Назад" else "✅ Готово",
+                color = Primary,
+                modifier = Modifier.fillMaxWidth()
+            ) { onFinish() }
+        }
     }
 }

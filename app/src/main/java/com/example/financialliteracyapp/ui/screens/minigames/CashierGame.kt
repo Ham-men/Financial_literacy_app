@@ -23,7 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun CashierGame(onFinish: () -> Unit, onCancel: () -> Unit = onFinish) {
+fun CashierGame(onFinish: () -> Unit, onCancel: () -> Unit = onFinish, embedded: Boolean = false) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
     val shopVm: ShopViewModel = viewModel(factory = ShopViewModel.factory(repo))
@@ -83,14 +83,16 @@ fun CashierGame(onFinish: () -> Unit, onCancel: () -> Unit = onFinish) {
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(
-                onClick = onCancel,
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surface
-            ) {
-                Text("◀", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 16.sp)
+            if (!embedded) {
+                Surface(
+                    onClick = onCancel,
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    Text("◀", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 16.sp)
+                }
+                Spacer(Modifier.width(10.dp))
             }
-            Spacer(Modifier.width(10.dp))
             Text("🧾 Касса",
                 style = MaterialTheme.typography.headlineMedium)
         }

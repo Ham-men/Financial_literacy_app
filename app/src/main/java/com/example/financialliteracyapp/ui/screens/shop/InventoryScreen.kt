@@ -23,7 +23,7 @@ import com.example.financialliteracyapp.ui.theme.*
 import kotlin.math.abs
 
 @Composable
-fun InventoryScreen(onBack: () -> Unit) {
+fun InventoryScreen(onBack: () -> Unit, embedded: Boolean = false) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
     val vm: InventoryViewModel = viewModel(factory = InventoryViewModel.factory(repo))
@@ -137,8 +137,10 @@ fun InventoryScreen(onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(16.dp))
-        BigActionButton("← Назад", PrimaryDark, Modifier.fillMaxWidth(), onClick = onBack)
-        Spacer(Modifier.height(24.dp))
+        if (!embedded) {
+            BigActionButton("← Назад", PrimaryDark, Modifier.fillMaxWidth(), onClick = onBack)
+            Spacer(Modifier.height(24.dp))
+        }
     }
 }
 

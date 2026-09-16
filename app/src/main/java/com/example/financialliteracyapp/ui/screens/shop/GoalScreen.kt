@@ -18,7 +18,7 @@ import com.example.financialliteracyapp.ui.components.BigActionButton
 import com.example.financialliteracyapp.ui.theme.*
 
 @Composable
-fun GoalScreen(onBack: () -> Unit) {
+fun GoalScreen(onBack: () -> Unit, embedded: Boolean = false) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
     val vm: GoalViewModel = viewModel(factory = GoalViewModel.factory(repo))
@@ -91,8 +91,10 @@ fun GoalScreen(onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(16.dp))
-        BigActionButton("← Назад", PrimaryDark, Modifier.fillMaxWidth()) { onBack() }
-        Spacer(Modifier.height(24.dp))
+        if (!embedded) {
+            BigActionButton("← Назад", PrimaryDark, Modifier.fillMaxWidth()) { onBack() }
+            Spacer(Modifier.height(24.dp))
+        }
     }
 }
 

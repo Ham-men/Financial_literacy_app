@@ -22,7 +22,7 @@ import com.example.financialliteracyapp.ui.screens.shop.ShopViewModel
 import com.example.financialliteracyapp.ui.theme.*
 
 @Composable
-fun PricerGame(onFinish: () -> Unit) {
+fun PricerGame(onFinish: () -> Unit, embedded: Boolean = false) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
     val vm: ShopViewModel = viewModel(factory = ShopViewModel.factory(repo))
@@ -38,14 +38,16 @@ fun PricerGame(onFinish: () -> Unit) {
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(
-                onClick = onFinish,
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surface
-            ) {
-                Text("◀", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 16.sp)
+            if (!embedded) {
+                Surface(
+                    onClick = onFinish,
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    Text("◀", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 16.sp)
+                }
+                Spacer(Modifier.width(10.dp))
             }
-            Spacer(Modifier.width(10.dp))
             Text("Поставь цену",
                 style = MaterialTheme.typography.headlineMedium)
         }

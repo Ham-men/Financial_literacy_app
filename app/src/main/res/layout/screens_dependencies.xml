@@ -2,8 +2,10 @@
 <!--
     Питомец Финни — карта зависимостей экранов (v3.0)
     Визуализация navigation-графа для ревью и документации.
-    bottomBarTabs: main, banks, market, kiosk, goals, quests, report
-    HIDDEN_BAR_ROUTES: onboarding + все мини-игры
+    bottomBarTabs: main, banks, kiosk, goals, report  (5 вкладок, рефакторинг 16.09.2026)
+    Подтабы-хабы: KioskScreen [Ларёк|Витрина|Закупка|Цена|Касса|Учёт|Найм];
+    AccountingScreen [Касса|Склад|P&amp;L]; GoalHubScreen [Цели|Задания|Прогресс].
+    HIDDEN_BAR_ROUTES: onboarding, shelves
 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -37,7 +39,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="v3.0 · 24 экрана · 7 вкладок · 5 маршрутов без нижней панели"
+                android:text="v3.0 · рефакторинг 16.09.2026 · 5 вкладок · хабы с подтабами"
                 android:textColor="#B0BEC5"
                 android:textSize="12sp" />
 
@@ -45,7 +47,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:text="Вкладки нижней панели: Дом · План · Магазин · Ларёк · Цели · Задания · Отчёт"
+                android:text="Вкладки нижней панели: Дом · План · Ларёк · Цели · Отчёт"
                 android:textColor="#FFFFFF"
                 android:textSize="12sp" />
 
@@ -53,7 +55,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="Без нижней панели: Онбординг + Закупка · Ценник · Полочки · Касса"
+                android:text="Без нижней панели: Онбординг · Полочки"
                 android:textColor="#FFCC80"
                 android:textSize="12sp" />
         </LinearLayout>
@@ -230,7 +232,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="→ Карта · Прогресс · Справочник · Взрослым"
+                android:text="→ Мир 🗺️ · Мой ларёк 🍋 · меню ⚙️ (Прогресс/Справочник/Взрослым)"
                 android:textColor="#FF9800"
                 android:textSize="12sp" />
         </LinearLayout>
@@ -555,7 +557,7 @@
                     android:paddingRight="8dp"
                     android:paddingTop="2dp"
                     android:paddingBottom="2dp"
-                    android:text="bottomBar"
+                    android:text="подтаб ларька"
                     android:textColor="#FFFFFF"
                     android:textSize="10sp"
                     android:textStyle="bold" />
@@ -565,7 +567,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="route: market · VM: MarketViewModel · repo: GameRepository"
+                android:text="embedded в KioskScreen (ранее route market + вкладка «Магазин»)"
                 android:textColor="#616161"
                 android:textSize="11sp" />
 
@@ -573,7 +575,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="▶ Entry: вкладка «Магазин» · из PetScreen"
+                android:text="▶ Entry: подвкладка «Витрина» в ларьке (KioskScreen)"
                 android:textColor="#4CAF50"
                 android:textSize="12sp" />
 
@@ -581,7 +583,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="◀ Назад (стрелка → main)"
+                android:text="◀ скрыта при embedded=true (переключение подтаба)"
                 android:textColor="#9E9E9E"
                 android:textSize="12sp" />
 
@@ -652,7 +654,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="→ Закупка 📦 · Полки · Ценник 🏷️ · Касса 🧾 · Найм 👩 · Учёт 📊"
+                android:text="→ Подтабы: Витрина 🛍 · Закупка 📦 · Полки · Цена 🏷️ · Касса 🧾 · Учёт 📊 · Найм 👩"
                 android:textColor="#FF9800"
                 android:textSize="12sp" />
 
@@ -663,6 +665,14 @@
                 android:text="◀ Назад (шапка → main)"
                 android:textColor="#9E9E9E"
                 android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="💡 Закупка/Цена/Касса — мини-игры embedded=true (не отдельные роуты); Касса → Отчёт"
+                android:textColor="#616161"
+                android:textSize="11sp" />
         </LinearLayout>
 
         <!-- HIRE -->
@@ -697,7 +707,7 @@
                     android:paddingRight="8dp"
                     android:paddingTop="2dp"
                     android:paddingBottom="2dp"
-                    android:text="bottomBar"
+                    android:text="подтаб ларька"
                     android:textColor="#FFFFFF"
                     android:textSize="10sp"
                     android:textStyle="bold" />
@@ -707,7 +717,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="route: hire · deps: GameRepository, UserPrefs"
+                android:text="embedded в KioskScreen (ранее route hire) · deps: GameRepository, UserPrefs"
                 android:textColor="#616161"
                 android:textSize="11sp" />
 
@@ -715,7 +725,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="▶ Entry: из KioskScreen (стул кассира)"
+                android:text="▶ Entry: подвкладка «Найм» (стул кассира / Мила)"
                 android:textColor="#4CAF50"
                 android:textSize="12sp" />
 
@@ -759,7 +769,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="📊 Учёт ларька (ShopScreen)"
+                    android:text="📊 Учёт ларька (AccountingScreen)"
                     android:textColor="#212121"
                     android:textSize="15sp"
                     android:textStyle="bold" />
@@ -782,7 +792,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="route: shop · VM: ShopViewModel · repo: GameRepository"
+                android:text="route: shop · VM: ShopViewModel + подтабы · repo: GameRepository"
                 android:textColor="#616161"
                 android:textSize="11sp" />
 
@@ -790,7 +800,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="▶ Entry: из KioskScreen «📊 Учёт ларька»"
+                android:text="▶ Entry: из KioskScreen «Учёт» 📊 · подтаб внутри ларька"
                 android:textColor="#4CAF50"
                 android:textSize="12sp" />
 
@@ -798,7 +808,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="→ Кассовая книга 🧾 · Товарный журнал 📦 · PL 📈 · Симулировать день 🤖"
+                android:text="→ Подтабы: Касса 🧾 · Склад 📦 · P&amp;L 📈 (появились вместо 3 маршрутов) + Симулировать день 🤖"
                 android:textColor="#FF9800"
                 android:textSize="12sp" />
 
@@ -869,7 +879,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="▶ Entry: из ShopScreen"
+                android:text="▶ Entry: подтаб «Касса» в AccountingScreen"
                 android:textColor="#4CAF50"
                 android:textSize="12sp" />
 
@@ -932,7 +942,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="▶ Entry: из ShopScreen"
+                android:text="▶ Entry: подтаб «Склад» в AccountingScreen"
                 android:textColor="#4CAF50"
                 android:textSize="12sp" />
 
@@ -995,7 +1005,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="▶ Entry: из ShopScreen «📈 PL»"
+                android:text="▶ Entry: подтаб «P&amp;L» в AccountingScreen"
                 android:textColor="#4CAF50"
                 android:textSize="12sp" />
 
@@ -1070,7 +1080,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="route: goals · VM: GoalViewModel · repo: GameRepository"
+                android:text="route: goals · хаб GoalHubScreen · VM: Goal/Quest/Progress · repo: GameRepository"
                 android:textColor="#616161"
                 android:textSize="11sp" />
 
@@ -1080,6 +1090,14 @@
                 android:layout_marginTop="6dp"
                 android:text="▶ Entry: вкладка «Цели» · из контрольной точки мира"
                 android:textColor="#4CAF50"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="→ Подтабы: Цели (GoalScreen) · Задания (QuestsScreen) · Прогресс (ProgressScreen)"
+                android:textColor="#FF9800"
                 android:textSize="12sp" />
 
             <TextView
@@ -1149,7 +1167,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="▶ Entry: вкладка «Задания» · из PetScreen"
+                android:text="▶ Entry: подтаб «Задания» в GoalHubScreen"
                 android:textColor="#4CAF50"
                 android:textSize="12sp" />
 
@@ -1212,7 +1230,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="▶ Entry: из MainScreen «📈 Прогресс»"
+                android:text="▶ Entry: меню ⚙️ на Доме · подтаб в GoalHubScreen"
                 android:textColor="#4CAF50"
                 android:textSize="12sp" />
 

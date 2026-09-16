@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 @Composable
 fun MainScreen(
     onOpenMap: () -> Unit,
+    onOpenKiosk: () -> Unit,
     onOpenProgress: () -> Unit,
     onOpenReference: () -> Unit,
     onOpenAdult: () -> Unit
@@ -87,6 +88,8 @@ fun MainScreen(
         }
     } ?: ""
 
+    var showMenu by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -94,7 +97,7 @@ fun MainScreen(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        // Верхняя панель: Финни + уровень + кэш
+        // Верхняя панель: Финни + уровень + кэш + меню настроек
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(petName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -103,7 +106,27 @@ fun MainScreen(
             Chip("Ур. $level")
             Spacer(Modifier.width(8.dp))
             Chip("💰 $cash ₡")
+            Spacer(Modifier.width(4.dp))
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Text("⚙️", fontSize = 22.sp)
+                }
+                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                    DropdownMenuItem(text = { Text("📈 Мой прогресс") }, onClick = { showMenu = false; onOpenProgress() })
+                    DropdownMenuItem(text = { Text("📖 Справочник") }, onClick = { showMenu = false; onOpenReference() })
+                    DropdownMenuItem(text = { Text("👨‍👩‍👧 Взрослым") }, onClick = { showMenu = false; onOpenAdult() })
+                }
+            }
         }
+
+        Spacer(Modifier.height(12.dp))
+
+        // Прогресс-бар дня (демо: 5 периодов)
+        LinearProgressIndicator(
+            progress = { (currentDay / 5f).coerceIn(0f, 1f) },
+            color = Primary,
+            modifier = Modifier.fillMaxWidth().height(6.dp)
+        )
         
         Spacer(Modifier.height(16.dp))
         
@@ -182,12 +205,10 @@ fun MainScreen(
         
         Spacer(Modifier.height(24.dp))
         
-        // Компактные входы (Карта, Прогресс, Справочник, Взрослый)
+        // Компактные входы: Мир и Мой ларёк (остальное — в меню ⚙️)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            QuickTile("🗺️", "Карта", Color(0xFF26A69A), Modifier.weight(1f)) { onOpenMap() }
-            QuickTile("📈", "Прогресс", Color(0xFF00ACC1), Modifier.weight(1f)) { onOpenProgress() }
-            QuickTile("📖", "Справочник", Color(0xFF795548), Modifier.weight(1f)) { onOpenReference() }
-            QuickTile("👨‍👩‍👧", "Взрослым", Color(0xFF8E24AA), Modifier.weight(1f)) { onOpenAdult() }
+            QuickTile("🗺️", "Мир", Color(0xFF26A69A), Modifier.weight(1f)) { onOpenMap() }
+            QuickTile("🍋", "Мой ларёк", Color(0xFFEF6C00), Modifier.weight(1f)) { onOpenKiosk() }
         }
         
         Spacer(Modifier.height(24.dp))

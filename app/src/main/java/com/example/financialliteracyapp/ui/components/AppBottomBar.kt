@@ -20,10 +20,8 @@ private data class TabItem(val route: String, val emoji: String, val label: Stri
 private val TABS = listOf(
     TabItem(Routes.MAIN, "🏠", "Дом"),
     TabItem(Routes.BANKS, "📅", "План"),
-    TabItem(Routes.MARKET, "🏪", "Магазин"),
-    TabItem(Routes.KIOSK, "🍋", "Ларёк"),
+    TabItem(Routes.KIOSK, "🧃", "Ларёк"),
     TabItem(Routes.GOALS, "🎯", "Цели"),
-    TabItem(Routes.QUESTS, "📋", "Задания"),
     TabItem(Routes.REPORT, "📊", "Отчёт")
 )
 

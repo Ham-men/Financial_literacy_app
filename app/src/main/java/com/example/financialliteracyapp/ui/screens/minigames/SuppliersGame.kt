@@ -35,7 +35,7 @@ private val suppliersUi = listOf(
 )
 
 @Composable
-fun SuppliersGame(onFinish: () -> Unit) {
+fun SuppliersGame(onFinish: () -> Unit, embedded: Boolean = false) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
     val vm: ShopViewModel = viewModel(factory = ShopViewModel.factory(repo))
@@ -53,14 +53,16 @@ fun SuppliersGame(onFinish: () -> Unit) {
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(
-                onClick = onFinish,
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surface
-            ) {
-                Text("◀", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 16.sp)
+            if (!embedded) {
+                Surface(
+                    onClick = onFinish,
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    Text("◀", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 16.sp)
+                }
+                Spacer(Modifier.width(10.dp))
             }
-            Spacer(Modifier.width(10.dp))
             Text("🧾 Закупка у поставщика",
                 style = MaterialTheme.typography.headlineMedium)
         }

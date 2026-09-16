@@ -22,37 +22,24 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.financialliteracyapp.data.AppContainer
 import com.example.financialliteracyapp.ui.components.AppBottomBar
+import com.example.financialliteracyapp.ui.screens.adult.AdultScreen
 import com.example.financialliteracyapp.ui.screens.banks.BankScreen
-import com.example.financialliteracyapp.ui.screens.journal.JournalScreen
+import com.example.financialliteracyapp.ui.screens.goals.GoalHubScreen
+import com.example.financialliteracyapp.ui.screens.kiosk.KioskScreen
 import com.example.financialliteracyapp.ui.screens.lot.LotScreen
 import com.example.financialliteracyapp.ui.screens.main.MainScreen
-import com.example.financialliteracyapp.ui.screens.adult.AdultScreen
-import com.example.financialliteracyapp.ui.screens.kiosk.HireScreen
-import com.example.financialliteracyapp.ui.screens.kiosk.KioskScreen
 import com.example.financialliteracyapp.ui.screens.map.MapScreen
-import com.example.financialliteracyapp.ui.screens.minigames.CashierGame
-import com.example.financialliteracyapp.ui.screens.minigames.PricerGame
 import com.example.financialliteracyapp.ui.screens.minigames.ShelvesGame
-import com.example.financialliteracyapp.ui.screens.minigames.SuppliersGame
 import com.example.financialliteracyapp.ui.screens.onboarding.OnboardingScreen
-import com.example.financialliteracyapp.ui.screens.pet.PetScreen
 import com.example.financialliteracyapp.ui.screens.progress.ProgressScreen
-import com.example.financialliteracyapp.ui.screens.quests.QuestsScreen
 import com.example.financialliteracyapp.ui.screens.reference.ReferenceScreen
 import com.example.financialliteracyapp.ui.screens.report.ReportScreen
-import com.example.financialliteracyapp.ui.screens.shop.GoalScreen
-import com.example.financialliteracyapp.ui.screens.shop.InventoryScreen
-import com.example.financialliteracyapp.ui.screens.shop.MarketScreen
-import com.example.financialliteracyapp.ui.screens.shop.PnLScreen
-import com.example.financialliteracyapp.ui.screens.shop.ShopScreen
+import com.example.financialliteracyapp.ui.screens.shop.AccountingScreen
 
-/** Экран без нижней панели: онбординг и полные мини-игры. */
+/** Экран без нижней панели: онбординг и полноэкранные мини-игры. */
 private val HIDDEN_BAR_ROUTES = setOf(
     Routes.ONBOARDING,
-    Routes.SUPPLIERS,
-    Routes.PRICER,
-    Routes.SHELVES,
-    Routes.CASHIER
+    Routes.SHELVES
 )
 
 @Composable
@@ -110,6 +97,7 @@ fun AppNavGraph(
             composable(Routes.MAIN) {
                 MainScreen(
                     onOpenMap       = { navController.navigate(Routes.MAP) },
+                    onOpenKiosk     = { navController.navigate(Routes.KIOSK) },
                     onOpenProgress  = { navController.navigate(Routes.PROGRESS) },
                     onOpenReference = { navController.navigate(Routes.REFERENCE) },
                     onOpenAdult     = { navController.navigate(Routes.ADULT) }
@@ -130,59 +118,32 @@ fun AppNavGraph(
                     onBuildingBuilt = { navController.popBackStack() }
                 )
             }
-            composable(Routes.MARKET) {
-                MarketScreen(onBack = { navController.navigate(Routes.MAIN) })
-            }
             composable(Routes.KIOSK) {
                 KioskScreen(
                     onBack = { navController.navigate(Routes.MAIN) },
-                    onBuyStock = { navController.navigate(Routes.SUPPLIERS) },
-                    onOpenPricer = { navController.navigate(Routes.PRICER) },
-                    onOpenCashier = { navController.navigate(Routes.CASHIER) },
-                    onOpenShelves = { navController.navigate(Routes.SHELVES) },
-                    onOpenOffice = { navController.navigate(Routes.SHOP) },
-                    onOpenHire = { navController.navigate(Routes.HIRE) }
+                    onOpenReport = {
+                        navController.navigate(Routes.REPORT) {
+                            popUpTo(Routes.KIOSK) { inclusive = false }
+                        }
+                    },
+                    onOpenShelves = { navController.navigate(Routes.SHELVES) }
                 )
-            }
-            composable(Routes.HIRE) {
-                HireScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.SHOP) {
-                ShopScreen(
-                    onBack           = { navController.popBackStack() },
-                    onOpenJournal    = { navController.navigate(Routes.JOURNAL) },
-                    onOpenInventory  = { navController.navigate(Routes.INVENTORY) },
-                    onOpenPnL        = { navController.navigate(Routes.PNL) },
-                    onSimulateBots   = { navController.navigate(Routes.REPORT) { popUpTo(Routes.SHOP) { inclusive = false } } }
+                AccountingScreen(
+                    onBack          = { navController.popBackStack() },
+                    onOpenReport    = {
+                        navController.navigate(Routes.REPORT) {
+                            popUpTo(Routes.SHOP) { inclusive = false }
+                        }
+                    }
                 )
-            }
-            composable(Routes.SUPPLIERS) {
-                SuppliersGame(onFinish = { navController.popBackStack() })
-            }
-            composable(Routes.INVENTORY) {
-                InventoryScreen(onBack = { navController.popBackStack() })
-            }
-            composable(Routes.PNL) {
-                PnLScreen(onBack = { navController.popBackStack() })
-            }
-            composable(Routes.GOALS) {
-                GoalScreen(onBack = { navController.popBackStack() })
-            }
-            composable(Routes.PRICER) {
-                PricerGame(onFinish = { navController.popBackStack() })
             }
             composable(Routes.SHELVES) {
                 ShelvesGame(onFinish = { navController.popBackStack() })
             }
-            composable(Routes.CASHIER) {
-                CashierGame(
-                    onFinish = {
-                        navController.navigate(Routes.REPORT) {
-                            popUpTo(Routes.KIOSK) { inclusive = true }
-                        }
-                    },
-                    onCancel = { navController.popBackStack() }
-                )
+            composable(Routes.GOALS) {
+                GoalHubScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.REPORT) {
                 ReportScreen(
@@ -190,12 +151,6 @@ fun AppNavGraph(
                         popUpTo(0) { inclusive = true }
                     } }
                 )
-            }
-            composable(Routes.JOURNAL) {
-                JournalScreen(onFinish = { navController.popBackStack() })
-            }
-            composable(Routes.QUESTS) {
-                QuestsScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.PROGRESS) {
                 ProgressScreen(onBack = { navController.popBackStack() })
@@ -205,15 +160,6 @@ fun AppNavGraph(
             }
             composable(Routes.ADULT) {
                 AdultScreen(onBack = { navController.popBackStack() })
-            }
-            composable(Routes.PET) {
-                PetScreen(
-                    onOpenBanks = { navController.navigate(Routes.BANKS) },
-                    onOpenMarket = { navController.navigate(Routes.MARKET) },
-                    onOpenKiosk = { navController.navigate(Routes.KIOSK) },
-                    onOpenQuests = { navController.navigate(Routes.QUESTS) },
-                    onOpenReport = { navController.navigate(Routes.REPORT) }
-                )
             }
         }
     }

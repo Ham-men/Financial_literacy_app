@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
 
 /** Кабинет найма (День 19): стол, стул, Мила-кассир, зарплата 80 ₡/день. */
 @Composable
-fun HireScreen(onBack: () -> Unit) {
+fun HireScreen(onBack: () -> Unit, embedded: Boolean = false) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
     val prefs = remember { AppContainer.prefs(context) }
@@ -47,14 +47,16 @@ fun HireScreen(onBack: () -> Unit) {
             Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(
-                onClick = onBack,
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surface
-            ) {
-                Text("◀", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 16.sp)
+            if (!embedded) {
+                Surface(
+                    onClick = onBack,
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    Text("◀", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 16.sp)
+                }
+                Spacer(Modifier.width(10.dp))
             }
-            Spacer(Modifier.width(10.dp))
             Text(
                 "🏢 Кабинет найма",
                 style = MaterialTheme.typography.titleLarge,

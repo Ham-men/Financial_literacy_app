@@ -37,7 +37,7 @@ MinSdk 26, targetSdk 34, namespace com.example.financialliteracyapp.
     - navigation/Routes.kt    — строковые маршруты (22 шт).
     - navigation/NavGraph.kt  — NavHost, гейт онбординга, нижняя панель,
                                 HIDDEN_BAR_ROUTES, navigateToTab.
-    - components/             — AppBottomBar (7 вкладок), StatBar, Chip, AppCard,
+    - components/             — AppBottomBar (5 вкладок), StatBar, Chip, AppCard,
                                 BigActionButton.
     - screens/<name>/         — XxxScreen + XxxViewModel (fan-out по одному VM на экран).
 
@@ -46,18 +46,30 @@ MinSdk 26, targetSdk 34, namespace com.example.financialliteracyapp.
     - Проверяемые правила: план <= бюджет, нет минуса, копилка, рост, начисление с источником.
 
 ------------------------------------------------------------------------
-3. НАВИГАЦИЯ
+3. НАВИГАЦИЯ (рефакторинг по разбор.txt, 16.09.2026)
 ------------------------------------------------------------------------
-- NavHost с 22 маршрутами Routes.
-- Нижняя панель AppBottomBar: Дом, План, Магазин, Ларёк, Цели, Задания, Отчёт.
-- HIDDEN_BAR_ROUTES (панель скрыта): онбординг, закупка, ценник, полки, касса.
+- NavHost: 5 вкладок нижней панели + маршруты-экраны.
+- Нижняя панель AppBottomBar (5 вкладок):
+  Дом, План, Ларёк, Цели, Отчёт. Магазин и Задания убраны из табов.
+- HIDDEN_BAR_ROUTES (панель скрыта): онбординг, полки (SHELVES).
+- Хаб ларька KioskScreen: сцена-комната + 7 подвкладок
+  [Ларёк | Витрина | Закупка | Цена | Касса | Учёт | Найм] — мини-игры
+  SuppliersGame/PricerGame/CashierGame и HireScreen встроены подтабами
+  (embedded=true), а не отдельными маршрутами. Глубина дня сокращена.
+  Закупка→Ларёк, Цена→Ларёк, Касса→Отчёт (onOpenReport), Найм→Ларёк.
+- Витрина (бывший Магазин, MarketScreen) — подвкладка ларька + товары для Финни.
+- AccountingScreen (маршрут SHOP): подвкладки [Касса(Journal) | Склад(Inventory) | P&L].
+- GoalHubScreen (таб Цели): подвкладки [Цели(Goal) | Задания(Quests) | Прогресс(Progress)].
+- Дом (MainScreen): плитки «Мир» и «Мой ларёк», меню ⚙️ (Прогресс/Справочник/Взрослым),
+  прогресс-бар дня (currentDay/5).
+- Неявка флага embedded=true у дочерних экранов скрывает их «◀»/«← Назад» и шапку.
 - Гейт онбординга: пока onboardingDone==null — спиннер; потом MAIN или ONBOARDING.
 - Переход по вкладке: popUpTo(MAIN)+saveState, launchSingleTop, restoreState.
 - Каждый экран имеет кнопку возврата (аудит 16.09.2026):
-  * ShopScreen (Учёт ларька): добавлена кнопка ◀ — раньше её не было (баг).
+  * AccountingScreen (Учёт ларька): кнопка ◀ в шапке (раньше ShopScreen — баг).
   * PnLScreen: сделан verticalScroll — кнопка «← Назад» была за пределами экрана (баг).
-  * SuppliersGame / PricerGame / CashierGame: добавлены кнопки ◀ (popBackStack).
-  * BankScreen PlanBuilderView: добавлена кнопка ◀.
+  * SuppliersGame / PricerGame / CashierGame: кнопки ◀ (в подтабе скрыты).
+  * BankScreen PlanBuilderView: кнопка ◀.
   Полная карта переходов — в screens_dependencies.xml.
 
 ------------------------------------------------------------------------

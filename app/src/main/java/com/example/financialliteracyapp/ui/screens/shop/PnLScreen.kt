@@ -21,7 +21,7 @@ import com.example.financialliteracyapp.ui.components.BigActionButton
 import com.example.financialliteracyapp.ui.theme.*
 
 @Composable
-fun PnLScreen(onBack: () -> Unit) {
+fun PnLScreen(onBack: () -> Unit, embedded: Boolean = false) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
     val vm: PnLViewModel = viewModel(factory = PnLViewModel.factory(repo))
@@ -155,8 +155,10 @@ fun PnLScreen(onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(16.dp))
-        BigActionButton("← Назад", PrimaryDark, Modifier.fillMaxWidth(), onClick = onBack)
-        Spacer(Modifier.height(24.dp))
+        if (!embedded) {
+            BigActionButton("← Назад", PrimaryDark, Modifier.fillMaxWidth(), onClick = onBack)
+            Spacer(Modifier.height(24.dp))
+        }
     }
 }
 
