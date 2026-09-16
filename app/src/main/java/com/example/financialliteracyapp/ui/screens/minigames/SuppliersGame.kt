@@ -3,7 +3,9 @@ package com.example.financialliteracyapp.ui.screens.minigames
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,10 +49,22 @@ fun SuppliersGame(onFinish: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        Text("Выбери поставщика",
-            style = MaterialTheme.typography.headlineMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                onClick = onFinish,
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Text("◀", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 16.sp)
+            }
+            Spacer(Modifier.width(10.dp))
+            Text("🧾 Закупка у поставщика",
+                style = MaterialTheme.typography.headlineMedium)
+        }
+        Spacer(Modifier.height(8.dp))
         Text("Нужно купить $units лимонадов по лучшей цене",
             color = TextSecondary, fontSize = 14.sp)
         Text("Доступно: $cash ₡", color = TextSecondary, fontSize = 13.sp)

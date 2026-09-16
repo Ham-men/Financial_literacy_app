@@ -2,8 +2,6 @@ package com.example.financialliteracyapp.ui.screens.shop
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -130,8 +128,8 @@ fun InventoryScreen(onBack: () -> Unit) {
             if (stockTxs.isEmpty()) {
                 Text("Нет операций по складу. Закупи товар или открой магазин.", color = TextSecondary, fontSize = 13.sp)
             } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    items(stockTxs) { tx ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    stockTxs.forEach { tx ->
                         StockTxRow(tx)
                     }
                 }

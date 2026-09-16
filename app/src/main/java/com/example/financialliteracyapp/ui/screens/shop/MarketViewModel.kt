@@ -13,6 +13,10 @@ class MarketViewModel(private val repo: GameRepository) : ViewModel() {
     val wallet = repo.observeWallet().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val pet = repo.observePet().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    fun buy(itemId: Int) {
+        viewModelScope.launch { repo.buyCatalogItem(itemId) }
+    }
+
     companion object {
         fun factory(repo: GameRepository): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {

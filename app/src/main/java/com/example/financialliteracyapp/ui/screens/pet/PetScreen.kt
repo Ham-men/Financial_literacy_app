@@ -1,6 +1,8 @@
 package com.example.financialliteracyapp.ui.screens.pet
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,78 +49,47 @@ fun PetScreen(
         else -> "😺"
     }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            BottomNav(
-                onOpenBanks = onOpenBanks,
-                onOpenMarket = onOpenMarket,
-                onOpenKiosk = onOpenKiosk,
-                onOpenQuests = onOpenQuests,
-                onOpenReport = onOpenReport
-            )
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        // Верхняя панель
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(petName,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f))
+            Chip("Ур. $level")
+            Spacer(Modifier.width(8.dp))
+            Chip("💰 $coins ₡")
         }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
-        ) {
-            // Верхняя панель
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(petName,
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.weight(1f))
-                Chip("Ур. $level")
-                Spacer(Modifier.width(8.dp))
-                Chip("💰 $coins ₡")
-            }
 
-            Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
 
-            // Питомец (вариант C — эмодзи)
-            Text(
-                text = petEmoji,
-                fontSize = 120.sp,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
+        // Питомец (вариант C — эмодзи)
+        Text(
+            text = petEmoji,
+            fontSize = 120.sp,
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        )
 
-            Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
 
-            // Шкалы
-            StatBar("🍖 Голод", hunger, Hunger)
-            StatBar("😊 Настроение", mood, Mood)
-            StatBar("⚡ Энергия", energy, Energy)
+        // Шкалы
+        StatBar("🍖 Голод", hunger, Hunger)
+        StatBar("😊 Настроение", mood, Mood)
+        StatBar("⚡ Энергия", energy, Energy)
 
-            Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(24.dp))
 
-            // Кнопки действий (логика Дня 3: покормить −15 ₡, поиграть −10 ₡)
-            Row(Modifier.fillMaxWidth()) {
-                BigActionButton("🍖 Покормить", Hunger, Modifier.weight(1f)) { vm.feed() }
-                Spacer(Modifier.width(8.dp))
-                BigActionButton("🎾 Поиграть", Mood, Modifier.weight(1f)) { vm.play() }
-                Spacer(Modifier.width(8.dp))
-                BigActionButton("😴 Спать", Energy, Modifier.weight(1f)) { vm.rest() }
-            }
+        // Кнопки действий (логика Дня 3: покормить −15 ₡, поиграть −10 ₡)
+        Row(Modifier.fillMaxWidth()) {
+            BigActionButton("🍖 Покормить", Hunger, Modifier.weight(1f)) { vm.feed() }
+            Spacer(Modifier.width(8.dp))
+            BigActionButton("🎾 Поиграть", Mood, Modifier.weight(1f)) { vm.play() }
+            Spacer(Modifier.width(8.dp))
+            BigActionButton("😴 Спать", Energy, Modifier.weight(1f)) { vm.rest() }
         }
-    }
-}
-
-@Composable
-private fun BottomNav(
-    onOpenBanks: () -> Unit,
-    onOpenMarket: () -> Unit,
-    onOpenKiosk: () -> Unit,
-    onOpenQuests: () -> Unit,
-    onOpenReport: () -> Unit
-) {
-    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-        NavigationBarItem(selected = true, onClick = {}, icon = { Text("🏠") }, label = { Text("Дом") })
-        NavigationBarItem(selected = false, onClick = onOpenBanks, icon = { Text("🏦") }, label = { Text("Банки") })
-        NavigationBarItem(selected = false, onClick = onOpenMarket, icon = { Text("🏪") }, label = { Text("Магазин") })
-        NavigationBarItem(selected = false, onClick = onOpenKiosk, icon = { Text("🍋") }, label = { Text("Ларёк") })
-        NavigationBarItem(selected = false, onClick = onOpenQuests, icon = { Text("📋") }, label = { Text("Задания") })
-        NavigationBarItem(selected = false, onClick = onOpenReport, icon = { Text("📊") }, label = { Text("Отчёт") })
     }
 }

@@ -122,21 +122,21 @@ fun KioskScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text("📦", fontSize = 24.sp)
-                    HotspotTag("Закупка", enabled = true)
+                    HotspotTag("Закупить товар", enabled = true)
                 }
             }
-            // Полки (справа) — пустые, пока нет закупки; тап — мини-игра «Расставь»
+            // Полки (на стене справа) — пустые, пока нет закупки; тап — мини-игра «Расставь»
             Column(
                 Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 20.dp, bottom = 42.dp)
+                    .padding(end = 16.dp, bottom = 130.dp)
                     .clickable(enabled = stock > 0) { onOpenShelves() },
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Column(
                     Modifier
-                        .width(120.dp)
-                        .height(92.dp)
+                        .width(110.dp)
+                        .height(88.dp)
                         .background(Color(0xFF4E342E), RoundedCornerShape(6.dp))
                         .padding(6.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -161,7 +161,7 @@ fun KioskScreen(
             Column(
                 Modifier
                     .align(Alignment.BottomStart)
-                    .padding(start = 118.dp, bottom = 40.dp)
+                    .padding(start = 100.dp, bottom = 38.dp)
                     .clickable { onOpenHire() },
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -172,7 +172,7 @@ fun KioskScreen(
             Text(
                 "🦝",
                 fontSize = 46.sp,
-                modifier = Modifier.align(Alignment.Center).padding(bottom = 74.dp)
+                modifier = Modifier.align(Alignment.Center).padding(bottom = 90.dp)
             )
             // Прилавок
             Box(
@@ -182,28 +182,40 @@ fun KioskScreen(
                     .align(Alignment.BottomCenter)
                     .background(Color(0xFF8D6E63))
             )
-            // Ценник и касса на прилавке — горячие точки
-            Row(
+            // Ценник — табличка повыше, на стене над прилавком
+            Column(
                 Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 42.dp),
-                horizontalArrangement = Arrangement.spacedBy(44.dp)
+                    .align(Alignment.TopStart)
+                    .padding(start = 16.dp, top = 44.dp)
+                    .clickable { onOpenPricer() },
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                HotspotButton("🏷️", "Ценник") { onOpenPricer() }
-                HotspotButton(
-                    if (cashierHired) "👩‍💻" else "🧾",
-                    if (cashierHired) "Касса · Мила" else "Касса"
-                ) { onOpenCashier() }
+                Text("🏷️", fontSize = 30.sp)
+                HotspotTag("Ценник", enabled = true)
+            }
+            // Касса на прилавке — внизу справа
+            Column(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 20.dp, bottom = 38.dp)
+                    .clickable { onOpenCashier() },
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(if (cashierHired) "👩‍💻" else "🧾", fontSize = 30.sp)
+                HotspotTag(
+                    if (cashierHired) "Касса · Мила" else "Касса",
+                    enabled = true
+                )
             }
         }
 
         // Подсказка про полки и кассира
         Text(
             if (stock > 0)
-                "Полки с товаром. Продажи — за кассой 🧾, цену меняй на ценнике 🏷️." +
+                "Полки с товаром. Продажи — за кассой 🧾, цену меняй на ценнике 🏷️ выше." +
                 (if (cashierHired) "\nМила-кассир 👩 помогает: касса работает быстрее." else "\nСтул у кассы пустует — тапни и наними кассира 👩.")
             else
-                "Полки пусты. Закупи лимонад у ящика у двери 📦, потом расставь на полки." +
+                "Полки пусты. Дверь слева — «Закупить товар» 📦: купи лимонад и расставь на полки." +
                 (if (cashierHired) "\nМила-кассир 👩 уже на месте, но товара нет." else "\nСтул у кассы пустует — тапни и наними кассира 👩."),
             fontSize = 13.sp,
             color = TextSecondary,
@@ -260,16 +272,5 @@ private fun HotspotTag(label: String, enabled: Boolean) {
             color = if (enabled) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
         )
-    }
-}
-
-@Composable
-private fun HotspotButton(icon: String, label: String, onClick: () -> Unit) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable { onClick() }
-    ) {
-        Text(icon, fontSize = 30.sp)
-        HotspotTag(label, enabled = true)
     }
 }

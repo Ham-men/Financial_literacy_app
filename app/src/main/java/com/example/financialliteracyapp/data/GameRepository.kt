@@ -10,6 +10,7 @@ import com.example.financialliteracyapp.data.local.entity.ShopEntity
 import com.example.financialliteracyapp.data.local.entity.TransactionEntity
 import com.example.financialliteracyapp.data.local.entity.WalletEntity
 import com.example.financialliteracyapp.domain.economy.Balance
+import com.example.financialliteracyapp.domain.economy.GameRules
 import kotlinx.coroutines.flow.first
 
 /** Репозиторий MVP: сиды + базовые операции. План День 2. */
@@ -88,8 +89,8 @@ class GameRepository(private val db: AppDatabase) {
     suspend fun feedPet(cost: Int = Balance.FEED_COST) {
         val pet = db.petDao().getOnce() ?: PetEntity()
         val wallet = db.walletDao().getOnce() ?: WalletEntity()
-        if (wallet.cash < cost) return
-        db.walletDao().upsert(wallet.copy(cash = wallet.cash - cost))
+        val newCash = GameRules.spend(wallet.cash, cost) ?: return
+        db.walletDao().upsert(wallet.copy(cash = newCash))
         db.petDao().upsert(pet.copy(hunger = (pet.hunger + Balance.PET_FOOD_HUNGER_GAIN).coerceAtMost(100)))
         db.transactionDao().insert(
             TransactionEntity(kind = "EXPENSE", category = "pet_food", amount = cost)
@@ -99,8 +100,8 @@ class GameRepository(private val db: AppDatabase) {
     suspend fun playWithPet(cost: Int = Balance.PLAY_COST) {
         val pet = db.petDao().getOnce() ?: PetEntity()
         val wallet = db.walletDao().getOnce() ?: WalletEntity()
-        if (wallet.cash < cost) return
-        db.walletDao().upsert(wallet.copy(cash = wallet.cash - cost))
+        val newCash = GameRules.spend(wallet.cash, cost) ?: return
+        db.walletDao().upsert(wallet.copy(cash = newCash))
         db.petDao().upsert(pet.copy(mood = (pet.mood + Balance.PET_PLAY_MOOD_GAIN).coerceAtMost(100)))
     }
 
@@ -114,11 +115,22 @@ class GameRepository(private val db: AppDatabase) {
         val w = db.walletDao().getOnce() ?: WalletEntity()
         val total = w.cash + w.needPlan + w.wantPlan + w.savePlan
         // защита: сумма плана не больше total
-        val n = needPlan.coerceIn(0, total)
-        val w_ = wantPlan.coerceIn(0, total - n)
-        val s = savePlan.coerceIn(0, total - n - w_)
-        val newCash = (total - n - w_ - s).coerceAtLeast(0)
-        db.walletDao().upsert(w.copy(cash = newCash, needPlan = n, wantPlan = w_, savePlan = s))
+        val alloc = GameRules.solvePlan(total, needPlan, wantPlan, savePlan)
+        db.walletDao().upsert(
+            w.copy(cash = alloc.cashRemainder, needPlan = alloc.need, wantPlan = alloc.want, savePlan = alloc.save)
+        )
+    }
+
+    /** Сколько доступно на покупку с учётом банки «Нужное/Желаемое» или наличных, если план не задан. */
+    suspend fun availableFor(category: String): Int {
+        val w = db.walletDao().getOnce() ?: WalletEntity()
+        val planSet = w.needPlan + w.wantPlan + w.savePlan > 0
+        return when {
+            !planSet -> w.cash
+            category == "NEED" -> w.needPlan + w.cash
+            category == "WANT" -> w.wantPlan + w.cash
+            else -> w.cash
+        }
     }
 
     // --- День 6: магазин ---
@@ -131,8 +143,8 @@ class GameRepository(private val db: AppDatabase) {
         val shop = db.shopDao().getOnce() ?: ShopEntity()
         val wallet = db.walletDao().getOnce() ?: WalletEntity()
         val cost = (supplierPricePerUnit * units).toInt()
-        if (wallet.cash < cost) return
-        db.walletDao().upsert(wallet.copy(cash = wallet.cash - cost))
+        val newCash = GameRules.spend(wallet.cash, cost) ?: return
+        db.walletDao().upsert(wallet.copy(cash = newCash))
         db.shopDao().upsert(
             shop.copy(
                 stock = shop.stock + units,
@@ -210,6 +222,17 @@ class GameRepository(private val db: AppDatabase) {
     suspend fun resetDay() {
         val shop = db.shopDao().getOnce() ?: return
         db.shopDao().upsert(shop.copy(soldToday = 0, revenueToday = 0))
+        // Новый день — новый план: возвращаем не потраченные банки в наличные
+        val wallet = db.walletDao().getOnce()
+        if (wallet != null) {
+            db.walletDao().upsert(
+                wallet.copy(
+                    cash = wallet.cash + wallet.needPlan + wallet.wantPlan + wallet.savePlan,
+                    needPlan = 0, wantPlan = 0, savePlan = 0,
+                    needFact = 0, wantFact = 0, saveFact = 0
+                )
+            )
+        }
         // пополняем ботов зарплатой для следующего дня (упрощённый цикл без работодателей)
         try {
             val bots = db.botDao().getAllOnce()
@@ -224,8 +247,8 @@ class GameRepository(private val db: AppDatabase) {
     suspend fun payCashierSalary(hired: Boolean) {
         if (!hired) return
         val wallet = db.walletDao().getOnce() ?: return
-        if (wallet.cash < Balance.CASHIER_SALARY) return
-        db.walletDao().upsert(wallet.copy(cash = wallet.cash - Balance.CASHIER_SALARY))
+        val newCash = GameRules.spend(wallet.cash, Balance.CASHIER_SALARY) ?: return
+        db.walletDao().upsert(wallet.copy(cash = newCash))
         db.transactionDao().insert(
             TransactionEntity(kind = "EXPENSE", category = "salary", amount = Balance.CASHIER_SALARY)
         )
@@ -244,8 +267,8 @@ class GameRepository(private val db: AppDatabase) {
     /** Покупка второго здания: списывает участок из доступных. */
     suspend fun buyLot() {
         val wallet = db.walletDao().getOnce() ?: return
-        if (wallet.cash < Balance.LOT_PRICE) return
-        db.walletDao().upsert(wallet.copy(cash = wallet.cash - Balance.LOT_PRICE))
+        val newCash = GameRules.spend(wallet.cash, Balance.LOT_PRICE) ?: return
+        db.walletDao().upsert(wallet.copy(cash = newCash))
         db.transactionDao().insert(
             TransactionEntity(kind = "EXPENSE", category = "lot", amount = Balance.LOT_PRICE)
         )
@@ -260,14 +283,88 @@ class GameRepository(private val db: AppDatabase) {
         )
     }
 
+    /** Покупка товара из каталога: списание, эффект питомца, транзакция. */
+    suspend fun buyCatalogItem(itemId: Int) {
+        val catalog = db.catalogItemDao().observeAll().first()
+        val item = catalog.find { it.id == itemId } ?: return
+        val wallet = db.walletDao().getOnce() ?: WalletEntity()
+        val planSet = wallet.needPlan + wallet.wantPlan + wallet.savePlan > 0
+        val pet = db.petDao().getOnce() ?: PetEntity()
+
+        val updated: WalletEntity? = when {
+            // План задан: тратим из своей банки (нужное/желаемое), наличные — как запас
+            planSet && item.category == "NEED" -> {
+                val remaining = (wallet.needPlan + wallet.cash) - item.price
+                if (remaining < 0) null
+                else wallet.copy(
+                    cash = if (wallet.needPlan >= item.price) wallet.cash
+                           else (wallet.needPlan + wallet.cash - item.price).coerceAtLeast(0),
+                    needPlan = (wallet.needPlan - item.price).coerceAtLeast(0),
+                    needFact = wallet.needFact + item.price
+                )
+            }
+            planSet && item.category == "WANT" -> {
+                val remaining = (wallet.wantPlan + wallet.cash) - item.price
+                if (remaining < 0) null
+                else wallet.copy(
+                    cash = if (wallet.wantPlan >= item.price) wallet.cash
+                           else (wallet.wantPlan + wallet.cash - item.price).coerceAtLeast(0),
+                    wantPlan = (wallet.wantPlan - item.price).coerceAtLeast(0),
+                    wantFact = wallet.wantFact + item.price
+                )
+            }
+            // План не задан: старая логика — тратим наличные
+            !planSet -> {
+                val newCash = GameRules.spend(wallet.cash, item.price) ?: return
+                wallet.copy(cash = newCash)
+            }
+            else -> null
+        }
+        if (updated == null) return
+
+        db.walletDao().upsert(updated)
+        db.petDao().upsert(
+            pet.copy(
+                hunger = (pet.hunger + item.hungerEffect).coerceAtMost(100),
+                mood   = (pet.mood   + item.moodEffect).coerceAtMost(100),
+                energy = (pet.energy + item.energyEffect).coerceAtMost(100)
+            )
+        )
+        db.transactionDao().insert(
+            TransactionEntity(
+                kind     = "EXPENSE",
+                category = "shop_purchase",
+                amount   = item.price
+            )
+        )
+    }
+
     // --- Цели накопления ---
     suspend fun addToGoal(goalId: Int, amount: Int) {
         val goals = db.goalDao().observeAll().first()
         val goal = goals.find { it.id == goalId } ?: return
         val wallet = db.walletDao().getOnce() ?: return
-        if (wallet.cash < amount) return
-        db.walletDao().upsert(wallet.copy(cash = wallet.cash - amount, saveFact = wallet.saveFact + amount))
-        val updatedGoal = goal.copy(currentAmount = (goal.currentAmount + amount).coerceAtMost(goal.targetAmount))
+        val planSet = wallet.needPlan + wallet.wantPlan + wallet.savePlan > 0
+
+        val updated: WalletEntity? = if (planSet) {
+            // Из банки «Копилка», наличные — как запас
+            if (wallet.savePlan + wallet.cash < amount) null
+            else wallet.copy(
+                cash = if (wallet.savePlan >= amount) wallet.cash
+                       else (wallet.savePlan + wallet.cash - amount).coerceAtLeast(0),
+                savePlan = (wallet.savePlan - amount).coerceAtLeast(0),
+                saveFact = wallet.saveFact + amount
+            )
+        } else {
+            val newCash = GameRules.spend(wallet.cash, amount) ?: return
+            wallet.copy(cash = newCash, saveFact = wallet.saveFact + amount)
+        }
+        if (updated == null) return
+
+        db.walletDao().upsert(updated)
+        val updatedGoal = goal.copy(
+            currentAmount = GameRules.capGoalDeposit(goal.currentAmount, goal.targetAmount, amount)
+        )
         db.goalDao().upsert(updatedGoal)
         db.transactionDao().insert(
             TransactionEntity(kind = "EXPENSE", category = "goal_deposit", amount = amount)
@@ -277,11 +374,10 @@ class GameRepository(private val db: AppDatabase) {
     suspend fun withdrawFromGoal(goalId: Int, amount: Int) {
         val goals = db.goalDao().observeAll().first()
         val goal = goals.find { it.id == goalId } ?: return
-        if (goal.currentAmount < amount) return
+        val newAmount = GameRules.spend(goal.currentAmount, amount) ?: return
         val wallet = db.walletDao().getOnce() ?: return
         db.walletDao().upsert(wallet.copy(cash = wallet.cash + amount, saveFact = wallet.saveFact - amount))
-        val updatedGoal = goal.copy(currentAmount = (goal.currentAmount - amount).coerceAtLeast(0))
-        db.goalDao().upsert(updatedGoal)
+        db.goalDao().upsert(goal.copy(currentAmount = newAmount))
         db.transactionDao().insert(
             TransactionEntity(kind = "INCOME", category = "goal_withdraw", amount = amount)
         )

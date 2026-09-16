@@ -53,7 +53,9 @@ fun ShelvesGame(onFinish: () -> Unit) {
 
     fun placeBottle(bottle: Bottle) {
         if (draggedId != bottle.id) return
-        val target = (0 until cellsCount).firstOrNull { cellBounds[it]?.contains(dropPos) == true }
+        // dropPos в координатах доски, cellBounds в экранных — приводим к одному пространству
+        val rootDrop = Offset(dropPos.x + gameOrigin.x, dropPos.y + gameOrigin.y)
+        val target = (0 until cellsCount).firstOrNull { cellBounds[it]?.contains(rootDrop) == true }
         if (target == null) {
             hint = "Бутылка упала мимо полки. Попробуй ещё!"
             draggedId = null
@@ -86,6 +88,14 @@ fun ShelvesGame(onFinish: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("🗄️ Расставь товар", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            Surface(
+                onClick = onFinish,
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Text("◀ Назад", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 13.sp)
+            }
+            Spacer(Modifier.width(8.dp))
             Surface(
                 onClick = { placed.clear(); hint = null; flashCell = null; draggedId = null },
                 shape = RoundedCornerShape(50),

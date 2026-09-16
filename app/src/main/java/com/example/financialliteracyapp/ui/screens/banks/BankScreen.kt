@@ -17,42 +17,129 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.financialliteracyapp.data.AppContainer
+import com.example.financialliteracyapp.data.local.entity.WalletEntity
 import com.example.financialliteracyapp.ui.components.BigActionButton
 import com.example.financialliteracyapp.ui.theme.*
 import kotlin.math.roundToInt
 
 private enum class BankType(val title: String, val emoji: String, val color: Color, val hint: String) {
-    NEED("Нужное", "🟢", BankSpend, "Корм, вода,\nуход, подстилка"),
-    WANT("Желаемое", "🔵", BankSave, "Мячик, бантик,\nкартина, торт"),
-    SAVE("Копилка", "🟡", BankGrow, "На цель:\nмячик / палатка / набор")
+    NEED("Нужное", "🍖", BankSpend, "Корм, вода, уход, подстилка"),
+    WANT("Желаемое", "🎀", BankSave, "Мячик, бантик, картина, торт"),
+    SAVE("Копилка", "🐷", BankGrow, "На цель: мячик / палатка / набор")
 }
 
 private data class Coin(val id: Long, val value: Int, var offset: Offset, var placed: BankType?)
 
+/**
+ * Сцена «План»: делит доступные деньги на 3 банки (нужное / желаемое / копилка).
+ * Эти деньги потом тратятся в других сценах именно из своей банки.
+ * Один раз подтвердил план — его нельзя снова перетаскивать в тот же день.
+ */
 @Composable
 fun BankScreen(onBack: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val repo = remember { AppContainer.repo(context) }
     val vm: BankViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = BankViewModel.factory(repo))
     val wallet by vm.wallet.collectAsState()
-    // показываем текущее распределение из Room, если есть
-    val totalFromDb = (wallet?.cash ?: 500) + (wallet?.needPlan ?: 0) + (wallet?.wantPlan ?: 0) + (wallet?.savePlan ?: 0)
 
+    val planSet = (wallet?.needPlan ?: 0) + (wallet?.wantPlan ?: 0) + (wallet?.savePlan ?: 0) > 0
+
+    if (wallet != null && planSet) {
+        LockedPlanView(wallet = wallet!!, onBack = onBack)
+        return
+    }
+
+    PlanBuilderView(
+        total = (wallet?.cash ?: 500),
+        onConfirm = { need, want, save ->
+            vm.confirm(need, want, save)
+            onBack()
+        },
+        onBack = onBack
+    )
+}
+
+/** План уже зафиксирован на этот день: показываем цифры, монеты не трогаем. */
+@Composable
+private fun LockedPlanView(wallet: WalletEntity, onBack: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp)
+    ) {
+        Text("🎯 План на день", style = MaterialTheme.typography.headlineMedium)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Ты уже разделил деньги по 3 банкам. План зафиксирован — в этот день его не меняют.",
+            fontSize = 13.sp, color = TextSecondary
+        )
+        Spacer(Modifier.height(16.dp))
+
+        AppCard {
+            Text("Доступно не по плану: ${wallet.cash} ₡", fontSize = 13.sp, color = TextSecondary)
+            Spacer(Modifier.height(8.dp))
+            LockedBankRow(BankType.NEED, wallet.needPlan, wallet.needFact)
+            LockedBankRow(BankType.WANT, wallet.wantPlan, wallet.wantFact)
+            LockedBankRow(BankType.SAVE, wallet.savePlan, wallet.saveFact)
+        }
+
+        Spacer(Modifier.height(24.dp))
+        Text(
+            "В магазине «Нужное» списывается из зелёной банки, «Желаемое» — из синей. Копилка пополняет цели.",
+            fontSize = 13.sp, color = TextSecondary, textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(24.dp))
+        BigActionButton("← Назад", PrimaryDark, Modifier.fillMaxWidth(), onClick = onBack)
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun LockedBankRow(bank: BankType, plan: Int, fact: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(bank.emoji, fontSize = 20.sp)
+        Spacer(Modifier.width(8.dp))
+        Column(Modifier.weight(1f)) {
+            Text(bank.title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = bank.color)
+            Text(bank.hint, fontSize = 11.sp, color = TextSecondary)
+        }
+        Text("$plan ₡", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        if (fact > 0) {
+            Spacer(Modifier.width(8.dp))
+            Text("потрачено $fact ₡", fontSize = 11.sp, color = TextSecondary)
+        }
+    }
+}
+
+/** Первый раз в этот день: перетаскиваем монеты по банкам и подтверждаем. */
+@Composable
+private fun PlanBuilderView(
+    total: Int,
+    onConfirm: (Int, Int, Int) -> Unit,
+    onBack: () -> Unit
+) {
+    // Разбиваем total на "монеты" (максимум 5 штук по ~равным частям)
     var coins by remember {
+        val parts = maxOf(1, kotlin.math.ceil(total / 100f).toInt().coerceAtMost(5))
+        val denom = if (parts == 0) 1 else parts
+        val base = total / denom
+        val remainder = total - base * denom
         mutableStateOf(
-            List(5) { i -> Coin(i.toLong(), 100, Offset.Zero, null) }
+            List(parts) { i ->
+                Coin(i.toLong(), base + if (i == parts - 1) remainder else 0, Offset.Zero, null)
+            }
         )
     }
-    var totalCoins by remember { mutableIntStateOf(500) }
-    // синхронизируем показ total с DB на первый вход
-    LaunchedEffect(totalFromDb) {
-        if (wallet != null) totalCoins = totalFromDb - (coins.filter { it.placed != null }.sumOf { it.value })
-    }
-
+    var totalCoins by remember { mutableIntStateOf(total) }
     val bankBounds = remember { mutableStateMapOf<BankType, Rect>() }
 
     Column(
@@ -61,12 +148,22 @@ fun BankScreen(onBack: () -> Unit) {
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
-        Text("Распредели монеты",
-            style = MaterialTheme.typography.headlineMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                onClick = onBack,
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Text("◀", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 16.sp)
+            }
+            Spacer(Modifier.width(10.dp))
+            Text("Подели деньги на день", style = MaterialTheme.typography.headlineMedium)
+        }
         Spacer(Modifier.height(4.dp))
-        Text("Перетащи монеты в одну из копилок",
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary)
+        Text(
+            "Это сцена «План». Разложи монеты по 3 банкам — потом покупки списываются из своей банки.",
+            fontSize = 13.sp, color = TextSecondary
+        )
 
         Spacer(Modifier.height(16.dp))
 
@@ -76,10 +173,7 @@ fun BankScreen(onBack: () -> Unit) {
 
         Spacer(Modifier.height(16.dp))
 
-        // Область с монетами (сверху) и тремя банками (снизу)
         Box(Modifier.weight(1f).fillMaxWidth()) {
-
-            // Три банка (фон)
             Row(
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(220.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -98,7 +192,6 @@ fun BankScreen(onBack: () -> Unit) {
                 }
             }
 
-            // Монеты (сверху, draggable)
             coins.forEachIndexed { index, coin ->
                 if (coin.placed == null) {
                     DraggableCoin(
@@ -120,17 +213,19 @@ fun BankScreen(onBack: () -> Unit) {
 
         Spacer(Modifier.height(16.dp))
         BigActionButton(
-            text = "Подтвердить распределение",
+            text = "Подтвердить план",
             color = Primary,
             modifier = Modifier.fillMaxWidth(),
-            enabled = coins.all { it.placed != null }
+            enabled = coins.isNotEmpty() && coins.all { it.placed != null }
         ) {
             val need = coins.filter { it.placed == BankType.NEED }.sumOf { it.value }
             val want = coins.filter { it.placed == BankType.WANT }.sumOf { it.value }
             val save = coins.filter { it.placed == BankType.SAVE }.sumOf { it.value }
-            vm.confirm(need, want, save)
-            onBack()
+            onConfirm(need, want, save)
         }
+        Spacer(Modifier.height(8.dp))
+        Text("Чтобы план применился, все монеты должны лежать в банках.", fontSize = 12.sp, color = TextSecondary,
+            modifier = Modifier.align(Alignment.CenterHorizontally))
     }
 }
 
@@ -149,6 +244,17 @@ private fun BankBox(bank: BankType, count: Int, modifier: Modifier = Modifier) {
         Text("$count ₡", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Text(bank.hint, fontSize = 11.sp, color = TextSecondary,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+    }
+}
+
+@Composable
+private fun AppCard(content: @Composable ColumnScope.() -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Column(Modifier.padding(16.dp), content = content)
     }
 }
 

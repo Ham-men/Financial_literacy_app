@@ -1,0 +1,99 @@
+АРХИТЕКТУРА ПРИЛОЖЕНИЯ — «Питомец Финни» (v3.0, Этап 1–2)
+===========================================================
+Пустой документ был создан 16.09.2026. Обновляется агентами вместе с планом.
+
+------------------------------------------------------------------------
+1. ОБЩЕЕ
+------------------------------------------------------------------------
+Продукт: симулятор финансовой грамотности для детей 6-11 лет.
+Мир: Копилкино. Питомец Финни (енот) помогает вести бюджет.
+Стек: Kotlin + Jetpack Compose + Room + DataStore + WorkManager + Navigation Compose.
+MinSdk 26, targetSdk 34, namespace com.example.financialliteracyapp.
+Сборка: JDK 21 (Android Studio JBR). Сборка/тесты из консоли — см. AGENTS.md §7.
+
+------------------------------------------------------------------------
+2. СЛОИ (пакеты app/src/main/java/com/example/financialliteracyapp/)
+------------------------------------------------------------------------
+2.1 data/
+    - AppContainer            — точка входа: создаёт GameRepository + UserPrefs.
+    - local/database/         — Room: AppDatabase, DAO.
+    - local/entity/           — PetEntity, WalletEntity, ShopEntity, TransactionEntity,
+                                BotEntity, GoalEntity, QuestEntity, CatalogItemEntity.
+    - repository/GameRepository — единственный public источник данных:
+                                план/факт, покупки, закупка, runDay, nextDay, сброс.
+    - preferences/UserPrefs   — DataStore (petName, bodyType, accessory, background,
+                                soundEnabled, difficulty, onboardingDone, currentDay,
+                                demoMode, cashierHired, lotPurchased, lotType).
+
+2.2 domain/economy/
+    - Balance                 — константы цен, цель 3 шт, аренда, налог.
+    - EconomicEngine          — начисление дохода с источником, зарплата, лоты.
+    - BotBrain                — прогноз покупателей по цене (для ценника/закупки).
+    - BotSimulator            — 20 ботов WORKER симулируют покупателей.
+    - GameRules               — правила «нельзя в минус», цели, рост.
+
+2.3 ui/
+    - MainActivity            — Compose-корень.
+    - navigation/Routes.kt    — строковые маршруты (22 шт).
+    - navigation/NavGraph.kt  — NavHost, гейт онбординга, нижняя панель,
+                                HIDDEN_BAR_ROUTES, navigateToTab.
+    - components/             — AppBottomBar (7 вкладок), StatBar, Chip, AppCard,
+                                BigActionButton.
+    - screens/<name>/         — XxxScreen + XxxViewModel (fan-out по одному VM на экран).
+
+2.4 test/
+    - GameRulesTest (16), EconomicEngineTest (5), BotBrainTest (8) — всего 34 юнит-теста.
+    - Проверяемые правила: план <= бюджет, нет минуса, копилка, рост, начисление с источником.
+
+------------------------------------------------------------------------
+3. НАВИГАЦИЯ
+------------------------------------------------------------------------
+- NavHost с 22 маршрутами Routes.
+- Нижняя панель AppBottomBar: Дом, План, Магазин, Ларёк, Цели, Задания, Отчёт.
+- HIDDEN_BAR_ROUTES (панель скрыта): онбординг, закупка, ценник, полки, касса.
+- Гейт онбординга: пока onboardingDone==null — спиннер; потом MAIN или ONBOARDING.
+- Переход по вкладке: popUpTo(MAIN)+saveState, launchSingleTop, restoreState.
+- Каждый экран имеет кнопку возврата (аудит 16.09.2026):
+  * ShopScreen (Учёт ларька): добавлена кнопка ◀ — раньше её не было (баг).
+  * PnLScreen: сделан verticalScroll — кнопка «← Назад» была за пределами экрана (баг).
+  * SuppliersGame / PricerGame / CashierGame: добавлены кнопки ◀ (popBackStack).
+  * BankScreen PlanBuilderView: добавлена кнопка ◀.
+  Полная карта переходов — в screens_dependencies.xml.
+
+------------------------------------------------------------------------
+4. ЭКОНОМИКА (день)
+------------------------------------------------------------------------
+- Старт: подарок 500 ₡ (source=starting_gift) + карман 150 ₡/день (daily_allowance).
+- План: делит доступные деньги на 3 банки (need/want/save) из WalletEntity.
+  План фиксируется после подтверждения; правка — только через сброс дня.
+- Покупки: в магазине списывают из банки категории (мечта) + cash как запас.
+- Копилка: addToGoal из банки save; снятие — отдельное подтверждение + сдвиг срока.
+- Ларёк: закупка у поставщика (2/2.5/3 ₡) → расстановка на полки (мини-игра) →
+  цена на ценнике (прогноз BotBrain) → продажи за кассой (10 клиентов, timer 20с).
+- Найм Милы: 80 ₡/день из расхода, списание в следующий день, если хватает.
+- Участок: покупка 300 ₡, пассивный доход +10 ₡/день, продажа за 200 ₡ (с потерей).
+- Итог дня: план/факт по банкам, отчёт (выручка, COGS, аренда, налог, зарплата).
+- Нельзя уйти в минус; Финни не болеет как наказание.
+
+------------------------------------------------------------------------
+5. КОНТРАКТЫ ДАННЫХ
+------------------------------------------------------------------------
+- PetEntity(id=1, name, bodyType 0..2, accessory 0..2, background 0,
+  hunger, mood, energy, level 1..3)
+- WalletEntity(id=1, cash, needPlan, wantPlan, savePlan, needFact, wantFact, saveFact)
+- ShopEntity(id=1, stock, price, costPrice, cash, soldToday, revenueToday)
+- TransactionEntity(day, kind INCOME/EXPENSE, category, amount, source)
+- BotEntity(20 x WORKER, salary 800, wallet 200, loyalty 0)
+- GoalEntity(id, title, targetAmount, currentAmount, completed)
+- QuestEntity(id, topic PLANNING/SAVING/SPENDING, title, reward, completed, day)
+- Каталог: 8 товаров (4 нужных: корм 40, вода 20, уход 25, подстилка 50;
+  4 желаемых: мячик 60, бантик 35, картина 80, торт 90).
+
+------------------------------------------------------------------------
+6. СБОРКА И ПРОВЕРКА
+------------------------------------------------------------------------
+- JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+- Сборка:   gradlew.bat :app:assembleDebug --console=plain
+- Тесты:    gradlew.bat :app:testDebugUnitTest
+- Ручной цикл: онбординг → главная → план (3 банки) → день → покупки → цель →
+  задания → итог → следующий день (>=5). Kill process → прогресс сохранён.

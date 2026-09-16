@@ -3,6 +3,7 @@ package com.example.financialliteracyapp.ui.screens.shop
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -45,6 +46,14 @@ fun ShopScreen(
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                onClick = onBack,
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Text("◀", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 16.sp)
+            }
+            Spacer(Modifier.width(10.dp))
             Text("📊 Учёт ларька",
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.weight(1f))

@@ -2,6 +2,8 @@ package com.example.financialliteracyapp.ui.screens.shop
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,36 +39,56 @@ fun PnLScreen(onBack: () -> Unit) {
     val grossProfit = revenue - cogs
     val netProfit = grossProfit - rent - tax - otherExpenses
 
-    // Мини-игра: разложить по конвертам
-    var gameRevenue by remember { mutableIntStateOf(0) }
+    // Мини-игра: разложить по конвертам по шагам
     var gameCogs by remember { mutableIntStateOf(0) }
     var gameRent by remember { mutableIntStateOf(0) }
     var gameTax by remember { mutableIntStateOf(0) }
-    var gameProfit by remember { mutableIntStateOf(0) }
-    var gameStep by remember { mutableIntStateOf(0) } // 0-4: выручка, себестоимость, аренда, налог, прибыль
+    var gameStep by remember { mutableIntStateOf(0) } // 0-3: себестоимость, аренда, налог; 4 — итог
     var showHint by remember { mutableStateOf(false) }
 
     val totalToDistribute = revenue
     val allocated = gameCogs + gameRent + gameTax
     val remaining = totalToDistribute - allocated
 
+    // Правильный ответ на текущем шаге для подсказки
+    val stepAnswers = listOf(cogs, rent, tax)
+    val currentAnswer = stepAnswers.getOrNull(gameStep)
+
+    fun validateStep() {
+        val value = when (gameStep) {
+            0 -> gameCogs
+            1 -> gameRent
+            2 -> gameTax
+            else -> 0
+        }
+        showHint = value != stepAnswers.getOrNull(gameStep)
+        gameStep++
+        showHint = gameStep <= 3 && showHint
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        Text("📈 P&L: Прибыли и убытки",
+        Text("📈 Прибыли и убытки (P&L)",
             style = MaterialTheme.typography.headlineMedium)
-        Text("Распредели выручку по конвертам",
+        Text("Учимся понимать: заработали денег больше, чем потратили?",
             fontSize = 13.sp, color = TextSecondary)
         Spacer(Modifier.height(16.dp))
 
         // Реальный P&L
         AppCard {
-            Text("📊 Реальный отчёт", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text("📊 Реальный отчёт — что уже случилось", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Spacer(Modifier.height(8.dp))
-            PnLRow("Выручка", revenue, Primary)
+            Text(
+                "Это отчёты с твоего ларька: сколько денег пришло (выручка) и сколько ушло на себестоимость, аренду и налог. Если внизу «плюс» — ты в плюсе.",
+                fontSize = 12.sp, color = TextSecondary
+            )
+            Spacer(Modifier.height(8.dp))
+            PnLRow("Выручка (пришло)", revenue, Primary)
             PnLRow("Себестоимость (COGS)", -cogs, Danger)
             HorizontalDivider(Modifier.padding(vertical = 4.dp))
             PnLRow("Валовая прибыль", grossProfit, Primary, big = true)
@@ -75,7 +97,7 @@ fun PnLScreen(onBack: () -> Unit) {
             PnLRow("Налог (13%)", -tax, Danger)
             if (otherExpenses > 0) PnLRow("Прочее", -otherExpenses, Danger)
             HorizontalDivider(Modifier.padding(vertical = 4.dp))
-            PnLRow("Чистая прибыль", netProfit, if (netProfit >= 0) Primary else Danger, big = true)
+            PnLRow("Чистая прибыль (осталось)", netProfit, if (netProfit >= 0) Primary else Danger, big = true)
         }
 
         Spacer(Modifier.height(16.dp))
@@ -84,14 +106,14 @@ fun PnLScreen(onBack: () -> Unit) {
         AppCard {
             Text("🎮 Мини-игра: Разложи по конвертам", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Spacer(Modifier.height(8.dp))
-            Text("У тебя выручка $totalToDistribute ₡. Разложи деньги по конвертам:",
+            Text("Представь, что выручка $totalToDistribute ₡ — это деньги, которые надо разложить по конвертам-расходам. Остаток и есть чистая прибыль.",
                 fontSize = 13.sp, color = TextSecondary)
 
             Spacer(Modifier.height(12.dp))
 
-            EnvelopeRow("📦 Себестоимость", "COGS", gameCogs, Danger) { gameCogs = it }
-            EnvelopeRow("🏠 Аренда", "RENT", gameRent, Danger) { gameRent = it }
-            EnvelopeRow("📝 Налог", "TAX", gameTax, Danger) { gameTax = it }
+            EnvelopeRow("📦 Себестоимость", "COGS", gameCogs, Danger, enabled = gameStep == 0) { gameCogs = it }
+            EnvelopeRow("🏠 Аренда", "RENT", gameRent, Danger, enabled = gameStep == 1) { gameRent = it }
+            EnvelopeRow("📝 Налог", "TAX", gameTax, Danger, enabled = gameStep == 2) { gameTax = it }
 
             Spacer(Modifier.height(8.dp))
 
@@ -101,6 +123,12 @@ fun PnLScreen(onBack: () -> Unit) {
                     color = if (remaining >= 0) Primary else Danger)
             }
 
+            if (showHint && currentAnswer != null) {
+                Spacer(Modifier.height(8.dp))
+                Text("Подсказка: в отчёте выше «${listOf("Себестоимость", "Аренда", "Налог")[gameStep - 1]}» = $currentAnswer ₡.",
+                    fontSize = 12.sp, color = Accent)
+            }
+
             Spacer(Modifier.height(12.dp))
 
             if (gameStep < 3) {
@@ -108,20 +136,19 @@ fun PnLScreen(onBack: () -> Unit) {
                     text = "➡ Далее: ${listOf("Себестоимость", "Аренда", "Налог")[gameStep]}",
                     color = Primary,
                     modifier = Modifier.fillMaxWidth()
-                ) { gameStep++ }
+                ) { validateStep() }
             } else {
                 val calcProfit = totalToDistribute - gameCogs - gameRent - gameTax
-                gameProfit = calcProfit
                 Row(Modifier.fillMaxWidth()) {
                     Text("💰 Чистая прибыль:", Modifier.weight(1f), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Text("${if (calcProfit >= 0) "+" else ""}$calcProfit ₡", fontWeight = FontWeight.Bold, fontSize = 18.sp,
                         color = if (calcProfit >= 0) Primary else Danger)
                 }
                 Spacer(Modifier.height(12.dp))
-                val correct = gameCogs == cogs && gameRent == rent && gameTax == tax
+                val correct = gameCogs == cogs && gameRent == rent && gameTax == tax && calcProfit == netProfit
                 Text(
-                    if (correct) "✅ Идеально! Все конверты заполнены верно."
-                    else "⚠️ Есть расхождения. Реально: COGS $cogs, Аренда $rent, Налог $tax.",
+                    if (correct) "✅ Идеально! Все конверты заполнены верно, прибыль сошлась."
+                    else "⚠️ Есть расхождения. Реально: COGS $cogs, Аренда $rent, Налог $tax, прибыль $netProfit ₡.",
                     fontSize = 13.sp, color = if (correct) Primary else Accent
                 )
             }
@@ -145,13 +172,16 @@ private fun PnLRow(label: String, amount: Int, color: androidx.compose.ui.graphi
 }
 
 @Composable
-private fun EnvelopeRow(label: String, key: String, currentValue: Int, color: androidx.compose.ui.graphics.Color, onChange: (Int) -> Unit) {
-    var textValue by remember { mutableStateOf(currentValue.toString()) }
+private fun EnvelopeRow(label: String, key: String, currentValue: Int, color: androidx.compose.ui.graphics.Color, enabled: Boolean, onChange: (Int) -> Unit) {
+    var textValue by remember { mutableStateOf(if (currentValue == 0) "" else currentValue.toString()) }
+    LaunchedEffect(currentValue) {
+        if (currentValue != 0 && textValue != currentValue.toString()) textValue = currentValue.toString()
+    }
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, Modifier.weight(1f), fontSize = 14.sp)
+        Text(label, Modifier.weight(1f), fontSize = 14.sp, color = if (enabled) MaterialTheme.colorScheme.onSurface else TextSecondary)
         OutlinedTextField(
             value = textValue,
             onValueChange = { v ->
@@ -159,7 +189,8 @@ private fun EnvelopeRow(label: String, key: String, currentValue: Int, color: an
                 onChange(v.toIntOrNull() ?: 0)
             },
             modifier = Modifier.width(100.dp),
-            singleLine = true
+            singleLine = true,
+            enabled = enabled
         )
     }
 }

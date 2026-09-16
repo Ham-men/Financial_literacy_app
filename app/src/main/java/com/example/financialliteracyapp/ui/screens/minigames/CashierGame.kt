@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,7 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun CashierGame(onFinish: () -> Unit) {
+fun CashierGame(onFinish: () -> Unit, onCancel: () -> Unit = onFinish) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
     val shopVm: ShopViewModel = viewModel(factory = ShopViewModel.factory(repo))
@@ -31,7 +32,7 @@ fun CashierGame(onFinish: () -> Unit) {
     var customerIndex by remember { mutableIntStateOf(1) }
     var earned by remember { mutableIntStateOf(0) }
     var soldCount by remember { mutableIntStateOf(0) }
-    var timer by remember { mutableFloatStateOf(1f) }
+    var timer by remember { mutableFloatStateOf(20f) }
     var correctChange by remember { mutableIntStateOf(0) }
     val totalCustomers = 10
     val scope = rememberCoroutineScope()
@@ -43,17 +44,18 @@ fun CashierGame(onFinish: () -> Unit) {
 
     // Генерация клиента
     fun newCustomer() {
-        val paid = listOf(10, 20, 30, 40, 50, 60, 70, 80, 90, 100).random()
-        val itemPrice = (3..9).random()
-        correctChange = paid - itemPrice
+        val extra = listOf(0, 5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100).random()
+        val paid = shopPrice + extra
+        correctChange = paid - shopPrice
     }
 
     LaunchedEffect(customerIndex) {
         newCustomer()
-        timer = 1f
+        // 20 секунд на одного клиента
+        timer = 20f
         while (timer > 0f && customerIndex <= totalCustomers) {
-            delay(50)
-            timer -= 0.05f
+            delay(1000)
+            timer -= 1f
         }
         if (customerIndex <= totalCustomers) {
             customerIndex++
@@ -66,12 +68,12 @@ fun CashierGame(onFinish: () -> Unit) {
         val correct = correctChange
         (listOf(
             correct,
-            correct + 5,
-            correct - 3,
-            correct + 10,
-            correct - 8,
-            correct + 2
-        )).shuffled()
+            correct + 50,
+            correct + 100,
+            correct - 20,
+            correct - 40,
+            correct + 20
+        ).map { it.coerceAtLeast(0) }).distinct().shuffled()
     }
 
     Column(
@@ -80,8 +82,22 @@ fun CashierGame(onFinish: () -> Unit) {
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                onClick = onCancel,
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Text("◀", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 16.sp)
+            }
+            Spacer(Modifier.width(10.dp))
+            Text("🧾 Касса",
+                style = MaterialTheme.typography.headlineMedium)
+        }
+        Spacer(Modifier.height(8.dp))
+
         LinearProgressIndicator(
-            progress = { timer },
+            progress = { (timer / 20f).coerceIn(0f, 1f) },
             color = Danger,
             modifier = Modifier.fillMaxWidth().height(8.dp)
         )
