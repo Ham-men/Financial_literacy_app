@@ -18,8 +18,23 @@ interface BotDao {
     @Query("SELECT COUNT(*) FROM bots")
     suspend fun count(): Int
 
+    @Query("SELECT * FROM bots WHERE workBuildingId = :buildingId")
+    fun observeByWorkplace(buildingId: Long): Flow<List<BotEntity>>
+
+    @Query("SELECT * FROM bots WHERE homeBuildingId = :buildingId")
+    suspend fun getByHomeBuilding(buildingId: Long): List<BotEntity>
+
+    @Query("SELECT * FROM bots WHERE state IN ('HOME', 'MOVING_TO_WORK') AND workBuildingId = :buildingId")
+    suspend fun getWorkersForBuilding(buildingId: Long): List<BotEntity>
+
+    @Query("SELECT * FROM bots WHERE hasCar = 1")
+    suspend fun getCarOwners(): List<BotEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(bots: List<BotEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(bot: BotEntity)
 
     @Query("DELETE FROM bots")
     suspend fun clear()

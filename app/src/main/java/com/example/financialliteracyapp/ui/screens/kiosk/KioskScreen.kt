@@ -1,5 +1,8 @@
 package com.example.financialliteracyapp.ui.screens.kiosk
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,25 +13,33 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.financialliteracyapp.data.AppContainer
+import com.example.financialliteracyapp.domain.economy.BotBrain
 import com.example.financialliteracyapp.ui.components.AppCard
 import com.example.financialliteracyapp.ui.components.Chip
-import com.example.financialliteracyapp.ui.screens.minigames.CashierGame
 import com.example.financialliteracyapp.ui.screens.minigames.PricerGame
 import com.example.financialliteracyapp.ui.screens.minigames.SuppliersGame
 import com.example.financialliteracyapp.ui.screens.shop.AccountingScreen
 import com.example.financialliteracyapp.ui.screens.shop.MarketScreen
 import com.example.financialliteracyapp.ui.screens.shop.ShopViewModel
 import com.example.financialliteracyapp.ui.theme.*
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
+import kotlin.random.Random
 
-/** Сцена ларька (разбор.txt) — хаб: комната-сцена + вкладки Витрина/Закупка/Цена/Касса/Учёт/Найм. */
+/** Сцена ларька (разбор.txt) — хаб: комната-сцена с живыми покупателями + вкладки. */
 @Composable
 fun KioskScreen(
     onBack: () -> Unit,
@@ -48,6 +59,40 @@ fun KioskScreen(
     val priceInt = shop?.price ?: 8
 
     var tab by remember { mutableIntStateOf(0) }
+
+    // --- Сессия ларька: покупатели, боты на сцене, обслуживание ---
+    val scope = rememberCoroutineScope()
+    val queue = remember { mutableStateListOf<KioskCustomer>() }
+    val botsOnStage = remember { mutableStateListOf<StageBot>() }
+    var spawned by remember { mutableIntStateOf(0) }
+    var served by remember { mutableIntStateOf(0) }
+    var totalBuyers by remember { mutableIntStateOf(0) }
+
+    fun serve(customer: KioskCustomer) {
+        scope.launch {
+            if (queue.remove(customer)) {
+                repo.completeSale(customer.units)
+                served++
+            }
+        }
+    }
+
+    // Мила-кассир пробивает сама: одна покупка раз в ~1.2 с (из любой вкладки)
+    LaunchedEffect(cashierHired, queue.firstOrNull()?.id) {
+        if (cashierHired) {
+            val c = queue.firstOrNull() ?: return@LaunchedEffect
+            delay(1200)
+            serve(c)
+        }
+    }
+
+    // Выход из ларька: необслуженные покупатели возвращают товар на полки
+    DisposableEffect(Unit) {
+        onDispose {
+            val units = queue.sumOf { it.units }
+            if (units > 0) scope.launch { repo.refundStock(units) }
+        }
+    }
 
     Column(
         Modifier
@@ -101,18 +146,24 @@ fun KioskScreen(
         }
 
         when (tab) {
-            // --- Комната ларька (вид сбоку) ---
+            // --- Комната ларька (вид сбоку): покупатели приходят по сцене ---
             0 -> Column(
                 Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
             ) {
-                Box(
+                BoxWithConstraints(
                     Modifier
                         .fillMaxWidth()
                         .height(400.dp)
                         .background(Color(0xFFF2E3C6))
                 ) {
+                    val density = LocalDensity.current
+                    val sceneW = with(density) { maxWidth.toPx() }
+                    val door = with(density) { Offset(52.dp.toPx(), 330.dp.toPx()) }
+                    val shelf = with(density) { Offset(sceneW - 71.dp.toPx(), 250.dp.toPx()) }
+                    val cash = with(density) { Offset(sceneW - 38.dp.toPx(), 332.dp.toPx()) }
+
                     Box(
                         Modifier
                             .fillMaxWidth()
@@ -153,6 +204,7 @@ fun KioskScreen(
                             HotspotTag("Закупить товар", enabled = true)
                         }
                     }
+                    // Полки: count заполненных ячеек = остаток склада (сохраняется между заходами)
                     Column(
                         Modifier
                             .align(Alignment.BottomEnd)
@@ -168,19 +220,19 @@ fun KioskScreen(
                                 .padding(6.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            if (stock > 0) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Text("🧃"); Text("🧃"); Text("🧃") }
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Text("🧃"); Text("🧃"); Text("🧃") }
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Text("🧃"); Text("🧃"); Text("🧃") }
-                            } else {
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Text("▫️"); Text("▫️"); Text("▫️") }
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Text("▫️"); Text("▫️"); Text("▫️") }
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Text("▫️"); Text("▫️"); Text("▫️") }
+                            val filled = stock.coerceIn(0, 9)
+                            repeat(3) { row ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    repeat(3) { col ->
+                                        val idx = row * 3 + col
+                                        Text(if (idx < filled) "🧃" else "▫️", fontSize = 16.sp)
+                                    }
+                                }
                             }
                         }
                         Spacer(Modifier.height(4.dp))
                         HotspotTag(
-                            if (stock > 0) "Полки: расставить" else "Полки пусты: закупись",
+                            if (stock > 0) "Полки: расставить ($stock шт.)" else "Полки пусты: закупись",
                             enabled = stock > 0
                         )
                     }
@@ -229,12 +281,69 @@ fun KioskScreen(
                             enabled = true
                         )
                     }
+
+                    // --- Живые покупатели ---
+                    botsOnStage.forEach { bot ->
+                        ArrivingBotView(
+                            bot = bot,
+                            door = door,
+                            shelf = shelf,
+                            cash = cash,
+                            onQueue = { arrived ->
+                                queue.add(KioskCustomer(id = arrived.id, units = arrived.units))
+                            },
+                            onDone = { arrived ->
+                                botsOnStage.remove(arrived)
+                            }
+                        )
+                    }
+                    queue.take(6).forEachIndexed { i, _ ->
+                        Text(
+                            "🧑",
+                            fontSize = 24.sp,
+                            modifier = Modifier.offset {
+                                IntOffset(
+                                    (cash.x - 30.dp.toPx() - 28.dp.toPx() * i).roundToInt(),
+                                    cash.y.toInt()
+                                )
+                            }
+                        )
+                    }
+
+                    // Производитель покупателей: пока не встречены все
+                    LaunchedEffect(Unit) {
+                        if (totalBuyers == 0) {
+                            totalBuyers = BotBrain.estimateBuyers(priceInt.toFloat()).coerceIn(2, 5)
+                        }
+                        while (spawned < totalBuyers) {
+                            delay(1500)
+                            val units = Random.nextInt(1, 3)
+                            if (repo.takeItem(units)) {
+                                spawned++
+                                botsOnStage.add(StageBot(id = spawned, units = units))
+                            } else {
+                                break
+                            }
+                        }
+                    }
+                    // Уход со сцены: боты в пути возвращают товар на полки
+                    DisposableEffect(Unit) {
+                        onDispose {
+                            val inFlight = botsOnStage.toList()
+                            if (inFlight.isNotEmpty()) {
+                                scope.launch {
+                                    repo.refundStock(inFlight.sumOf { it.units })
+                                    botsOnStage.removeAll(inFlight.toSet())
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Text(
                     if (stock > 0)
-                        "Полки с товаром. Продажи — во вкладке «Касса» 🧾, цену меняй в «Цена» 🏷️." +
-                        (if (cashierHired) "\nМила-кассир 👩 на кассе: работает быстрее." else "\nСтул у кассы пустует — вкладка «Найм» 👩.")
+                        "Покупатели заходят, берут товар с полок и встают к кассе 🧾." +
+                        (if (cashierHired) "\nМила-кассир 👩 пробивает очередь сама." else "\nОбслужи их на кассе: вкладка «Касса» 🧾.")
                     else
                         "Полки пусты. «Закупка» 📦 — купи лимонад, потом расставь его на полки." +
                         (if (cashierHired) "\nМила-кассир 👩 уже на месте, но товара нет." else "\nСтул у кассы пустует — вкладка «Найм» 👩."),
@@ -258,9 +367,17 @@ fun KioskScreen(
                         Text("Цена за единицу", Modifier.weight(1f))
                         Text("$priceInt ₡", fontWeight = FontWeight.Bold, color = Accent)
                     }
+                    Spacer(Modifier.height(6.dp))
+                    Row {
+                        Text("Продано сегодня", Modifier.weight(1f))
+                        Text("$served шт.", fontWeight = FontWeight.Bold, color = Primary)
+                    }
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Сменить цену — подвкладка «Цена» 🏷️.",
+                        if (cashierHired)
+                            "Мила считает кассу сама — смотреть можно в любой вкладке."
+                        else
+                            "Сменить цену — подвкладка «Цена» 🏷️, обслужить покупателей — «Касса» 🧾.",
                         fontSize = 12.sp,
                         color = TextSecondary
                     )
@@ -274,12 +391,68 @@ fun KioskScreen(
             2 -> SuppliersGame(onFinish = { tab = 0 }, embedded = true)
             // --- Поставь цену ---
             3 -> PricerGame(onFinish = { tab = 0 }, embedded = true)
-            // --- Касса ---
-            4 -> CashierGame(embedded = true, onFinish = onOpenReport, onCancel = { tab = 0 })
+            // --- Живая касса ---
+            4 -> CashierScene(
+                price = priceInt,
+                queue = queue.toList(),
+                cashierHired = cashierHired,
+                servedToday = served,
+                onServe = ::serve,
+                onGoScene = { tab = 0 },
+                onOpenReport = onOpenReport
+            )
             // --- Учёт ларька (касса/склад/P&L) ---
             5 -> AccountingScreen(onBack = {}, embedded = true, onOpenReport = onOpenReport)
             // --- Найм кассира ---
             6 -> HireScreen(onBack = { tab = 0 }, embedded = true)
+        }
+    }
+}
+
+/** Бот идёт по сцене: дверь → полка → касса. У полки показывает «+N 🧃». */
+@Composable
+private fun ArrivingBotView(
+    bot: StageBot,
+    door: Offset,
+    shelf: Offset,
+    cash: Offset,
+    onQueue: (StageBot) -> Unit,
+    onDone: (StageBot) -> Unit
+) {
+    val x = remember(bot.id) { Animatable(door.x) }
+    val y = remember(bot.id) { Animatable(door.y) }
+    var grabbed by remember(bot.id) { mutableStateOf(false) }
+
+    LaunchedEffect(bot.id) {
+        coroutineScope {
+            launch { x.animateTo(shelf.x, tween(1100, easing = LinearEasing)) }
+            launch { y.animateTo(shelf.y, tween(1100, easing = LinearEasing)) }
+        }
+        delay(350)
+        grabbed = true
+        delay(800)
+        coroutineScope {
+            launch { x.animateTo(cash.x, tween(1100, easing = LinearEasing)) }
+            launch { y.animateTo(cash.y, tween(1100, easing = LinearEasing)) }
+        }
+        onQueue(bot)
+        onDone(bot)
+    }
+
+    Box(
+        Modifier.offset {
+            IntOffset(x.value.roundToInt(), y.value.roundToInt())
+        }
+    ) {
+        Text("🤖", fontSize = 32.sp)
+        if (grabbed) {
+            Text(
+                "+${bot.units} 🧃",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Primary,
+                modifier = Modifier.offset(y = (-18).dp)
+            )
         }
     }
 }

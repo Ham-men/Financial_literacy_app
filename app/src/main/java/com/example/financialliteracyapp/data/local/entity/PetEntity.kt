@@ -3,7 +3,7 @@ package com.example.financialliteracyapp.data.local.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-/** Питомец Финни — кастомизация: тело × аксессуар × фон, 3 шкалы, 3 стадии роста. */
+/** Питомец Финни — кастомизация: тело × аксессуар × фон, 3 шкалы, 3 стадии роста. Позиция на карте (x,y). */
 @Entity(tableName = "pet")
 data class PetEntity(
     @PrimaryKey val id: Int = 1,
@@ -14,5 +14,7 @@ data class PetEntity(
     val hunger: Int = 70,
     val mood: Int = 80,
     val energy: Int = 90,
-    val level: Int = 1           // 1=Малыш, 2=Подросток, 3=Хозяин ларька
+    val level: Int = 1,          // 1=Малыш, 2=Подросток, 3=Хозяин ларька
+    val x: Float = 0f,           // позиция на карте (пиксели)
+    val y: Float = 0f
 )

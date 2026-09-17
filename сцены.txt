@@ -24,7 +24,7 @@ app/src/main/java/com/minieconomy/
 │   │   ├── shop/ShopScreen.kt
 │   │   ├── minigames/SuppliersGame.kt
 │   │   ├── minigames/PricerGame.kt
-│   │   ├── minigames/CashierGame.kt
+│   │   ├── kiosk/CashierScene.kt
 │   │   ├── report/ReportScreen.kt
 │   │   ├── journal/JournalScreen.kt
 │   │   └── quests/QuestsScreen.kt
@@ -44,7 +44,7 @@ MainActivity	MainActivity.kt	~25
 Магазин	ShopScreen.kt	~110
 Закупка	SuppliersGame.kt	~100
 Ценник	PricerGame.kt	~85
-Касса	CashierGame.kt	~120
+Касса	CashierScene.kt	~150
 Отчёт	ReportScreen.kt	~90
 Журнал	JournalScreen.kt	~110
 Задания	QuestsScreen.kt	~80

@@ -1435,7 +1435,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="▶ Entry: вкладка «Отчёт» · из PetScreen · из CashierGame (после 10 клиентов) · из ShopScreen"
+                android:text="▶ Entry: вкладка «Отчёт» · из PetScreen · из CashierScene (после смены) · из ShopScreen"
                 android:textColor="#4CAF50"
                 android:textSize="12sp" />
 
@@ -1692,7 +1692,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="🧾 Касса (CashierGame)"
+                    android:text="🧾 Касса — живая продажа (CashierScene)"
                     android:textColor="#212121"
                     android:textSize="15sp"
                     android:textStyle="bold" />

@@ -3,7 +3,7 @@ package com.example.financialliteracyapp.data.local.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-/** Кассовая книга: приход/расход. План День 2 / День 15. */
+/** Кассовая книга: приход/расход. План День 2 / День 15. v5: привязка к зданию. */
 @Entity(tableName = "transactions")
 data class TransactionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -11,5 +11,6 @@ data class TransactionEntity(
     val kind: String = "EXPENSE", // INCOME | EXPENSE
     val category: String = "other",
     val amount: Int = 0,
+    val buildingId: Long? = null,
     val timestamp: Long = System.currentTimeMillis()
 )

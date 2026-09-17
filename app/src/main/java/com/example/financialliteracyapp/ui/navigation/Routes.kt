@@ -17,6 +17,7 @@ object Routes {
     const val PRICER = "minigame_pricer"
     const val SHELVES = "minigame_shelves"
     const val CASHIER = "minigame_cashier"
+    const val CLEANING = "minigame_cleaning"
     const val REPORT = "report"
     const val LOT = "lot"
     const val JOURNAL = "journal"
@@ -24,4 +25,5 @@ object Routes {
     const val PROGRESS = "progress"
     const val REFERENCE = "reference"
     const val ADULT = "adult"
+    const val BUILDING = "building"
 }

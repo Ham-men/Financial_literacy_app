@@ -1,6 +1,41 @@
-АРХИТЕКТУРА ПРИЛОЖЕНИЯ — «Питомец Финни» (v3.0, Этап 1–2)
-===========================================================
+АРХИТЕКТУРА ПРИЛОЖЕНИЯ — «Питомец Финни» (v5.0, Этап 0–1 P0)
+===============================================================
 Пустой документ был создан 16.09.2026. Обновляется агентами вместе с планом.
+
+------------------------------------------------------------------------
+0. ВЕРСИЯ v5.0 — ЕДИНАЯ САМОПОДДЕРЖИВАЮЩАЯСЯ ИНФРАСТРУКТУРА (сюжет5.txt)
+------------------------------------------------------------------------
+- Одно здание = рабочее место + точка продажи. Замкнутый цикл:
+  боты работают в зданиях игрока → зарплата → траты в тех же зданиях → деньги вернулись.
+- Room v4: ShopEntity заменён на BuildingEntity (здания), BotEntity v5 (типы/позиции),
+  PetEntity + x/y, TransactionEntity + buildingId. fallbackToDestructiveMigration (данные стираются).
+- GameRepository v5: здания/боты, purchaseStockForBuilding/takeItemFromBuilding/
+  refundStockToBuilding/completeSaleInBuilding/paySalaryToBot/updateDirtLevel/
+  rewardCleaning/hireBotToBuilding, resetDay + simulateDay(): DayResult,
+  ensureSeed() создаёт «Продукты» (Рынок, x5 y5, stock50 price8 costPrice3 cash200 dirt30)
+  + 6 ботов: 2 WORKER-сотрудника (salary 100, workBuildingId=здание) + 4 покупателя
+  (ENGINEER 🚗/STUDENT/RETIREE/MANAGER, wallet 300–600, workBuildingId=-1).
+- Старые экраны ларька переведены на здание через совместимые обёртки в GameRepository
+  (observeShop→здание PRODUCTS, takeItem/refundStock/completeSale→building-методы).
+- Навигация: маршрут MAP (карта района) + BUILDING/{id} (внутренности здания) +
+  SUPPLIERS/PRICER/HIRE/CASHIER/{id}/CLEANING/{id}. Карта/здания/мини-игры скрывают бар.
+- P0/P1 (готово): MapScreen (top-down, джойстик/тап, здания из БД, Финни, HUD),
+  BuildingInteriorScreen (горячие точки + «Сотрудники и зарплата» + «Боты района»
+  + «Рабочий день» с итогом simulateDay() + «Нанять на работу» слайдер зарплаты),
+  боты-NPC из BotEntity ходят по карте (Animatable, дом↔дверь магазина) с состояниями
+  HOME/MOVING_TO_WORK/WORKING/SHOPPING/MOVING_HOME (repo.updateBotStatePosition).
+  День 7: BuildingCashierScreen (живая касса здания: дверь→полка→касса, CashierScene).
+  День 12: CleaningGameScreen (tap-to-clean, грязь спавнится, dirtLevel, +40 ₡).
+- Сид v2: здание «Продукты» (x5 y5 stock50 price8 costPrice3 dirt30) + «СТО»
+  (x13 y5 stock30 price30 costPrice12) + 6 ботов: 2 WORKER-сотрудника Продуктов,
+  1 ENGINEER-механик СТО (salary120, 🚗), покупатели STUDENT/RETIREE + MANAGER 🚗.
+  В СТО покупают только боты с машиной (simulateDay + карточка «Водители-клиенты»).
+- Карта маршрутизирует ботов: работник → своё здание (workBuildingId), безработный
+  водитель → СТО, остальные → Продукты (doorFor(bot) по doors[id]).
+- Интерьер типизирован: Продукты — закупка/полки/ценник/касса; СТО — подъёмник 🚗🛠️,
+  «Приём машин» (locked), прайс 💲 (locked), касса/уборка/найм/рабочий день общие.
+- Следующий шаг (День 16-18): боты с машинами по долям типов, мини-игра «Ремонт машины»,
+  апгрейды зданий (upgradesBitmask).
 
 ------------------------------------------------------------------------
 1. ОБЩЕЕ
@@ -54,7 +89,7 @@ MinSdk 26, targetSdk 34, namespace com.example.financialliteracyapp.
 - HIDDEN_BAR_ROUTES (панель скрыта): онбординг, полки (SHELVES).
 - Хаб ларька KioskScreen: сцена-комната + 7 подвкладок
   [Ларёк | Витрина | Закупка | Цена | Касса | Учёт | Найм] — мини-игры
-  SuppliersGame/PricerGame/CashierGame и HireScreen встроены подтабами
+  SuppliersGame/PricerGame и HireScreen встроены подтабами
   (embedded=true), а не отдельными маршрутами. Глубина дня сокращена.
   Закупка→Ларёк, Цена→Ларёк, Касса→Отчёт (onOpenReport), Найм→Ларёк.
 - Витрина (бывший Магазин, MarketScreen) — подвкладка ларька + товары для Финни.
@@ -68,7 +103,8 @@ MinSdk 26, targetSdk 34, namespace com.example.financialliteracyapp.
 - Каждый экран имеет кнопку возврата (аудит 16.09.2026):
   * AccountingScreen (Учёт ларька): кнопка ◀ в шапке (раньше ShopScreen — баг).
   * PnLScreen: сделан verticalScroll — кнопка «← Назад» была за пределами экрана (баг).
-  * SuppliersGame / PricerGame / CashierGame: кнопки ◀ (в подтабе скрыты).
+  * SuppliersGame / PricerGame: кнопки ◀ (в подтабе скрыты).
+   * CashierScene: встроена в подтаб «Касса» (вместо бывшей мини-игры CashierGame).
   * BankScreen PlanBuilderView: кнопка ◀.
   Полная карта переходов — в screens_dependencies.xml.
 

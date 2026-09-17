@@ -2,29 +2,71 @@ package com.example.financialliteracyapp.data
 
 import com.example.financialliteracyapp.data.local.AppDatabase
 import com.example.financialliteracyapp.data.local.entity.BotEntity
+import com.example.financialliteracyapp.data.local.entity.BuildingEntity
 import com.example.financialliteracyapp.data.local.entity.CatalogItemEntity
 import com.example.financialliteracyapp.data.local.entity.GoalEntity
 import com.example.financialliteracyapp.data.local.entity.PetEntity
 import com.example.financialliteracyapp.data.local.entity.QuestEntity
-import com.example.financialliteracyapp.data.local.entity.ShopEntity
 import com.example.financialliteracyapp.data.local.entity.TransactionEntity
 import com.example.financialliteracyapp.data.local.entity.WalletEntity
 import com.example.financialliteracyapp.domain.economy.Balance
 import com.example.financialliteracyapp.domain.economy.GameRules
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlin.math.min
 
-/** Репозиторий MVP: сиды + базовые операции. План День 2. */
+/** Репозиторий v5.0: здания, боты с позициями, замкнутый экономический цикл. */
 class GameRepository(private val db: AppDatabase) {
 
     fun observePet() = db.petDao().observe()
     fun observeWallet() = db.walletDao().observe()
-    fun observeShop() = db.shopDao().observe()
+    fun observeBuildings() = db.buildingDao().observeAll()
+    fun observeBuildingsByDistrict(district: String) = db.buildingDao().observeByDistrict(district)
     fun observeTransactions() = db.transactionDao().observeAll()
     fun observeBots() = db.botDao().observeAll()
+    fun observeWorkersForBuilding(buildingId: Long) = db.botDao().observeByWorkplace(buildingId)
     fun observeGoals() = db.goalDao().observeAll()
     fun observeQuests() = db.questDao().observeAll()
     fun observeCatalog() = db.catalogItemDao().observeAll()
     fun observeCatalogByCategory(category: String) = db.catalogItemDao().observeByCategory(category)
+
+    // --- Совместимость со старым ларьком: здание «Продукты» вместо ShopEntity ---
+    /** Стартовое здание района Рынок — «продуктовый» магазин игрока. */
+    private suspend fun legacyBuilding(): BuildingEntity? =
+        getBuildingByTypeAndDistrict("PRODUCTS", "Рынок")
+
+    fun observeShop(): Flow<BuildingEntity?> =
+        observeBuildingsByDistrict("Рынок").map { list -> list.firstOrNull { it.type == "PRODUCTS" } }
+
+    suspend fun setShopPrice(price: Int) {
+        val b = legacyBuilding() ?: return
+        db.buildingDao().upsert(b.copy(price = price.coerceAtLeast(1)))
+    }
+
+    suspend fun purchaseStock(pricePerUnit: Double, units: Int) {
+        val b = legacyBuilding() ?: return
+        purchaseStockForBuilding(b.id, pricePerUnit, units)
+    }
+
+    suspend fun simulateBotDay() {
+        simulateDay()
+    }
+
+    suspend fun takeItem(units: Int): Boolean {
+        val b = legacyBuilding() ?: return false
+        return takeItemFromBuilding(b.id, units)
+    }
+
+    suspend fun refundStock(units: Int) {
+        val b = legacyBuilding() ?: return
+        refundStockToBuilding(b.id, units)
+    }
+
+    suspend fun completeSale(units: Int) {
+        val b = legacyBuilding() ?: return
+        completeSaleInBuilding(b.id, units)
+    }
 
     suspend fun upsertPet(pet: PetEntity) = db.petDao().upsert(pet)
 
@@ -35,16 +77,56 @@ class GameRepository(private val db: AppDatabase) {
         if (db.walletDao().getOnce() == null) {
             db.walletDao().upsert(WalletEntity())
         }
-        if (db.shopDao().getOnce() == null) {
-            db.shopDao().upsert(ShopEntity())
+        if (db.buildingDao().observeAll().first().isEmpty()) {
+            // Стартовые здания на районе Рынок: «Продукты» и «СТО»
+            db.buildingDao().upsert(
+                BuildingEntity(
+                    type = "PRODUCTS",
+                    district = "Рынок",
+                    x = 5, y = 5,
+                    level = 1,
+                    stock = 50,
+                    price = 8,
+                    costPrice = 3,
+                    cash = 200,
+                    dirtLevel = 30
+                )
+            )
+            db.buildingDao().upsert(
+                BuildingEntity(
+                    type = "AUTO_SERVICE",
+                    district = "Рынок",
+                    x = 13, y = 5,
+                    level = 1,
+                    stock = 30,
+                    price = 30,
+                    costPrice = 12,
+                    cash = 400,
+                    dirtLevel = 10
+                )
+            )
         }
+        val allBuildings = db.buildingDao().observeAll().first()
+        val productsId = allBuildings.firstOrNull { it.type == "PRODUCTS" }?.id ?: -1L
+        val autoServiceId = allBuildings.firstOrNull { it.type == "AUTO_SERVICE" }?.id ?: -1L
         if (db.botDao().count() == 0) {
-            val bots = List(20) { i ->
-                BotEntity(id = (i + 1).toLong(), type = "WORKER")
-            }
+            // 2 работника в «Продуктах» (зарплата), 1 механик в СТО, остальные — покупатели.
+            val bots = listOf(
+                BotEntity(id = 1L, type = "WORKER",  salary = 100, wallet = 200, loyalty = 0.6f,
+                    hasCar = false, workBuildingId = productsId, state = "HOME"),
+                BotEntity(id = 2L, type = "WORKER",  salary = 100, wallet = 200, loyalty = 0.6f,
+                    hasCar = false, workBuildingId = productsId, state = "HOME"),
+                BotEntity(id = 3L, type = "ENGINEER", salary = 120, wallet = 300, loyalty = 0.6f,
+                    hasCar = true, workBuildingId = autoServiceId, state = "HOME"),
+                BotEntity(id = 4L, type = "STUDENT",  salary = 0, wallet = 300, loyalty = 0.5f,
+                    hasCar = false, workBuildingId = -1, state = "HOME"),
+                BotEntity(id = 5L, type = "RETIREE",  salary = 0, wallet = 400, loyalty = 0.5f,
+                    hasCar = false, workBuildingId = -1, state = "HOME"),
+                BotEntity(id = 6L, type = "MANAGER",  salary = 0, wallet = 600, loyalty = 0.5f,
+                    hasCar = true, workBuildingId = -1, state = "HOME")
+            )
             db.botDao().upsertAll(bots)
         }
-        // Seed goals (3 цели: 300, 800, 1500)
         if (db.goalDao().observeAll().first().isEmpty()) {
             val goals = listOf(
                 GoalEntity(title = "Мячик для Финни", targetAmount = 300, currentAmount = 0, order = 0),
@@ -53,30 +135,23 @@ class GameRepository(private val db: AppDatabase) {
             )
             db.goalDao().upsertAll(goals)
         }
-        // Seed quests (6 заданий на 3 темы)
         if (db.questDao().observeAll().first().isEmpty()) {
             val quests = listOf(
-                // Планирование
                 QuestEntity(topic = "PLANNING", title = "Три банки", description = "Разложи 300 ₡ так, чтобы хватило на корм и хоть что-то в копилку", reward = 50, order = 0),
                 QuestEntity(topic = "PLANNING", title = "Непредвиденный расход", description = "Финни порвал подстилку, нужно 50 ₡. Откуда взять: из желаемого или из копилки?", reward = 50, order = 1),
-                // Сбережения
                 QuestEntity(topic = "SAVING", title = "Цель ближе", description = "Положи в копилку не меньше 50 ₡, увидь, как шкала цели подросла", reward = 50, order = 2),
                 QuestEntity(topic = "SAVING", title = "Не снимай сразу", description = "Соблазн купить торт из копилки; если снимаешь — подтверждаешь и видишь сдвиг срока", reward = 50, order = 3),
-                // Покупки
                 QuestEntity(topic = "SPENDING", title = "Сравни цены", description = "Два одинаковых корма, разная цена; купи дешевле (мини-игра «Найди дешевле»)", reward = 50, order = 4),
                 QuestEntity(topic = "SPENDING", title = "Сдача на кассе", description = "Клиент дал 100, товар 70; дай сдачу 30 (мини-игра «Касса»)", reward = 50, order = 5)
             )
             db.questDao().upsertAll(quests)
         }
-        // Seed catalog (8 товаров: 4 нужных + 4 желаемых)
         if (db.catalogItemDao().observeAll().first().isEmpty()) {
             val items = listOf(
-                // Нужное
                 CatalogItemEntity(title = "Корм", price = 40, category = "NEED", hungerEffect = 40, iconRes = "ic_item_food", order = 0),
                 CatalogItemEntity(title = "Вода", price = 20, category = "NEED", hungerEffect = 15, iconRes = "ic_item_water", order = 1),
                 CatalogItemEntity(title = "Расчёска / уход", price = 25, category = "NEED", moodEffect = 10, iconRes = "ic_item_brush", order = 2),
                 CatalogItemEntity(title = "Подстилка", price = 50, category = "NEED", energyEffect = 15, iconRes = "ic_item_bedding", order = 3),
-                // Желаемое
                 CatalogItemEntity(title = "Мячик", price = 60, category = "WANT", moodEffect = 25, iconRes = "ic_item_ball", order = 4),
                 CatalogItemEntity(title = "Бантик", price = 35, category = "WANT", moodEffect = 10, iconRes = "ic_item_bow", order = 5),
                 CatalogItemEntity(title = "Картина на стену", price = 80, category = "WANT", moodEffect = 15, iconRes = "ic_item_picture", order = 6),
@@ -86,15 +161,14 @@ class GameRepository(private val db: AppDatabase) {
         }
     }
 
+    // --- Питомец ---
     suspend fun feedPet(cost: Int = Balance.FEED_COST) {
         val pet = db.petDao().getOnce() ?: PetEntity()
         val wallet = db.walletDao().getOnce() ?: WalletEntity()
         val newCash = GameRules.spend(wallet.cash, cost) ?: return
         db.walletDao().upsert(wallet.copy(cash = newCash))
         db.petDao().upsert(pet.copy(hunger = (pet.hunger + Balance.PET_FOOD_HUNGER_GAIN).coerceAtMost(100)))
-        db.transactionDao().insert(
-            TransactionEntity(kind = "EXPENSE", category = "pet_food", amount = cost)
-        )
+        db.transactionDao().insert(TransactionEntity(kind = "EXPENSE", category = "pet_food", amount = cost))
     }
 
     suspend fun playWithPet(cost: Int = Balance.PLAY_COST) {
@@ -110,18 +184,27 @@ class GameRepository(private val db: AppDatabase) {
         db.petDao().upsert(pet.copy(energy = (pet.energy + Balance.PET_SLEEP_ENERGY_GAIN).coerceAtMost(100)))
     }
 
-    // --- День 5: три банки (нужное/желаемое/копилка) ---
+    suspend fun movePet(x: Float, y: Float) {
+        val pet = db.petDao().getOnce() ?: PetEntity()
+        db.petDao().upsert(pet.copy(x = x, y = y))
+    }
+
+    /** Состояние и позиция бота на карте (P0: видимые боты-NPC). */
+    suspend fun updateBotStatePosition(botId: Long, state: String, x: Float, y: Float) {
+        val bot = db.botDao().getAllOnce().find { it.id == botId } ?: return
+        db.botDao().upsert(bot.copy(state = state, targetX = x, targetY = y))
+    }
+
+    // --- Банки (план/факт) ---
     suspend fun distributeBanks(needPlan: Int, wantPlan: Int, savePlan: Int) {
         val w = db.walletDao().getOnce() ?: WalletEntity()
         val total = w.cash + w.needPlan + w.wantPlan + w.savePlan
-        // защита: сумма плана не больше total
         val alloc = GameRules.solvePlan(total, needPlan, wantPlan, savePlan)
         db.walletDao().upsert(
             w.copy(cash = alloc.cashRemainder, needPlan = alloc.need, wantPlan = alloc.want, savePlan = alloc.save)
         )
     }
 
-    /** Сколько доступно на покупку с учётом банки «Нужное/Желаемое» или наличных, если план не задан. */
     suspend fun availableFor(category: String): Int {
         val w = db.walletDao().getOnce() ?: WalletEntity()
         val planSet = w.needPlan + w.wantPlan + w.savePlan > 0
@@ -133,96 +216,242 @@ class GameRepository(private val db: AppDatabase) {
         }
     }
 
-    // --- День 6: магазин ---
-    suspend fun setShopPrice(price: Int) {
-        val shop = db.shopDao().getOnce() ?: ShopEntity()
-        db.shopDao().upsert(shop.copy(price = price.coerceIn(1, 30)))
-    }
+    // --- Здания v5.0 ---
+    suspend fun getBuilding(id: Long): BuildingEntity? = db.buildingDao().observeById(id).first()
 
-    suspend fun purchaseStock(supplierPricePerUnit: Double, units: Int) {
-        val shop = db.shopDao().getOnce() ?: ShopEntity()
+    suspend fun getBuildingByTypeAndDistrict(type: String, district: String): BuildingEntity? =
+        db.buildingDao().getByTypeAndDistrict(type, district)
+
+    suspend fun upsertBuilding(building: BuildingEntity) = db.buildingDao().upsert(building)
+
+    suspend fun purchaseStockForBuilding(buildingId: Long, supplierPricePerUnit: Double, units: Int) {
+        val building = db.buildingDao().observeById(buildingId).first() ?: return
         val wallet = db.walletDao().getOnce() ?: WalletEntity()
         val cost = (supplierPricePerUnit * units).toInt()
         val newCash = GameRules.spend(wallet.cash, cost) ?: return
         db.walletDao().upsert(wallet.copy(cash = newCash))
-        db.shopDao().upsert(
-            shop.copy(
-                stock = shop.stock + units,
+        db.buildingDao().upsert(
+            building.copy(
+                stock = building.stock + units,
                 costPrice = supplierPricePerUnit.toInt().coerceAtLeast(1),
-                cash = shop.cash - cost
+                cash = building.cash - cost
             )
         )
         db.transactionDao().insert(
-            TransactionEntity(kind = "EXPENSE", category = "stock_purchase", amount = cost)
+            TransactionEntity(kind = "EXPENSE", category = "stock_purchase", amount = cost, buildingId = buildingId)
         )
     }
 
-    suspend fun runDay(sold: Int) {
-        val shop = db.shopDao().getOnce() ?: ShopEntity()
-        val wallet = db.walletDao().getOnce() ?: WalletEntity()
-        val actualSold = sold.coerceIn(0, shop.stock)
-        val revenue = actualSold * shop.price
-        val cost = actualSold * shop.costPrice
-        val rent = Balance.SHOP_RENT_MARKET
-        val tax = (revenue * Balance.TAX_RATE).toInt()
-        val profit = revenue - cost - rent - tax
-        db.shopDao().upsert(
-            shop.copy(
-                stock = shop.stock - actualSold,
-                cash = shop.cash + revenue,
-                soldToday = actualSold,
-                revenueToday = revenue
+    suspend fun takeItemFromBuilding(buildingId: Long, units: Int): Boolean {
+        if (units <= 0) return false
+        val building = db.buildingDao().observeById(buildingId).first() ?: return false
+        if (building.stock < units) return false
+        db.buildingDao().upsert(building.copy(stock = building.stock - units))
+        return true
+    }
+
+    suspend fun refundStockToBuilding(buildingId: Long, units: Int) {
+        if (units <= 0) return
+        val building = db.buildingDao().observeById(buildingId).first() ?: return
+        db.buildingDao().upsert(building.copy(stock = building.stock + units))
+    }
+
+    suspend fun completeSaleInBuilding(buildingId: Long, units: Int) {
+        if (units <= 0) return
+        val building = db.buildingDao().observeById(buildingId).first() ?: return
+        val revenue = units * building.price
+        val cost = units * building.costPrice
+        val profit = (revenue - cost).coerceAtLeast(0)
+        db.buildingDao().upsert(
+            building.copy(
+                cash = building.cash + revenue,
+                soldToday = building.soldToday + units,
+                revenueTotal = building.revenueTotal + revenue
             )
         )
-        db.walletDao().upsert(wallet.copy(cash = wallet.cash + profit.coerceAtLeast(0)))
+        val wallet = db.walletDao().getOnce() ?: return
+        db.walletDao().upsert(wallet.copy(cash = wallet.cash + profit))
+        if (revenue > 0) {
+            db.transactionDao().insert(
+                TransactionEntity(kind = "INCOME", category = "bot_sales", amount = revenue, buildingId = buildingId)
+            )
+        }
+        if (cost > 0) {
+            db.transactionDao().insert(
+                TransactionEntity(kind = "EXPENSE", category = "cogs", amount = cost, buildingId = buildingId)
+            )
+        }
+    }
+
+    suspend fun updateDirtLevel(buildingId: Long, dirt: Int) {
+        val building = db.buildingDao().observeById(buildingId).first() ?: return
+        db.buildingDao().upsert(building.copy(dirtLevel = dirt.coerceIn(0, 100)))
+    }
+
+    suspend fun rewardCleaning(amount: Int) {
+        if (amount <= 0) return
+        val wallet = db.walletDao().getOnce() ?: return
+        db.walletDao().upsert(wallet.copy(cash = wallet.cash + amount))
         db.transactionDao().insert(
-            TransactionEntity(kind = "INCOME", category = "sales", amount = revenue)
+            TransactionEntity(kind = "INCOME", category = "cleaning_reward", amount = amount)
         )
     }
 
-    // --- День 11-14: боты + цикл ---
-    suspend fun simulateBotDay(): com.example.financialliteracyapp.domain.economy.EconomicEngine.DayResult {
-        val shop = db.shopDao().getOnce() ?: ShopEntity()
-        val allBots = try {
-            db.botDao().getAllOnce()
-        } catch (e: Exception) {
-            List(20) { i -> BotEntity(id = (i + 1).toLong()) }
-        }
-        val botsForSim = if (allBots.isEmpty()) List(20) { i -> BotEntity(id = (i + 1).toLong()) } else allBots
-
-        val (updatedBots, result) = com.example.financialliteracyapp.domain.economy.EconomicEngine.simulateBotPurchases(shop, botsForSim)
-        // сохраняем ботов
-        db.botDao().upsertAll(updatedBots)
-        // сохраняем магазин
-        db.shopDao().upsert(
-            shop.copy(
-                stock = (shop.stock - result.sold).coerceAtLeast(0),
-                cash = shop.cash + result.revenue,
-                soldToday = result.sold,
-                revenueToday = result.revenue
-            )
+    /** Найм бота на работу в здание игрока: привязка workBuildingId + зарплата (плюс разовый сбор 50 ₡). */
+    suspend fun hireBotToBuilding(botId: Long, buildingId: Long, salary: Int) {
+        val bot = db.botDao().getAllOnce().find { it.id == botId } ?: return
+        val wallet = db.walletDao().getOnce() ?: return
+        val newCash = GameRules.spend(wallet.cash, 50) ?: return
+        db.walletDao().upsert(wallet.copy(cash = newCash))
+        db.botDao().upsert(bot.copy(workBuildingId = buildingId, salary = salary, state = "HOME"))
+        db.transactionDao().insert(
+            TransactionEntity(kind = "EXPENSE", category = "hiring", amount = 50, buildingId = buildingId)
         )
-        // прибыль игроку
-        val wallet = db.walletDao().getOnce() ?: WalletEntity()
-        db.walletDao().upsert(wallet.copy(cash = wallet.cash + result.profit.coerceAtLeast(0)))
-        // транзакции дня
-        if (result.revenue > 0) {
-            db.transactionDao().insert(TransactionEntity(kind = "INCOME", category = "bot_sales", amount = result.revenue))
-        }
-        if (result.cost > 0) {
-            db.transactionDao().insert(TransactionEntity(kind = "EXPENSE", category = "cogs", amount = result.cost))
-        }
-        db.transactionDao().insert(TransactionEntity(kind = "EXPENSE", category = "rent", amount = result.rent))
-        if (result.tax > 0) {
-            db.transactionDao().insert(TransactionEntity(kind = "EXPENSE", category = "tax", amount = result.tax))
-        }
-        return result
     }
+
+    suspend fun paySalaryToBot(botId: Long, amount: Int) {
+        val bot = db.botDao().getAllOnce().find { it.id == botId } ?: return
+        val wallet = db.walletDao().getOnce() ?: return
+        val newCash = GameRules.spend(wallet.cash, amount) ?: return
+        db.walletDao().upsert(wallet.copy(cash = newCash))
+        db.botDao().upsert(bot.copy(wallet = bot.wallet + amount))
+        db.transactionDao().insert(
+            TransactionEntity(kind = "EXPENSE", category = "salary", amount = amount)
+        )
+    }
+
+    // --- Симуляция дня v5.0: замкнутый цикл зарплата → траты в зданиях ---
+    suspend fun simulateDay(): DayResult {
+        val buildings = db.buildingDao().observeAll().first()
+        val allBots = db.botDao().getAllOnce()
+
+        if (buildings.isEmpty() || allBots.isEmpty()) return DayResult(0, 0, 0, 0, 0, 0, 0, 0)
+
+        // 1. Утро: боты идут на работу (находят здание где работают)
+        val workingBots = allBots.filter { it.workBuildingId != -1L }
+        var totalSalary = 0
+        var totalRevenue = 0
+        var totalCost = 0
+        var totalRent = 0
+        var totalTax = 0
+
+        // Игрок платит зарплаты сотрудникам своих зданий
+        for (building in buildings) {
+            val employees = workingBots.filter { it.workBuildingId == building.id }
+            val salaryCost = employees.sumOf { it.salary }
+            val playerWallet = db.walletDao().getOnce() ?: WalletEntity()
+            val newCash = GameRules.spend(playerWallet.cash, salaryCost)
+            if (newCash != null) {
+                db.walletDao().upsert(playerWallet.copy(cash = newCash))
+                totalSalary += salaryCost
+                db.transactionDao().insert(
+                    TransactionEntity(kind = "EXPENSE", category = "salary", amount = salaryCost, buildingId = building.id)
+                )
+                // Боты получают зарплату
+                for (bot in employees) {
+                    db.botDao().upsert(bot.copy(wallet = bot.wallet + bot.salary, state = "WORKING"))
+                }
+            } else {
+                // Не хватает на зарплату — боты не работают, лояльность падает
+                for (bot in employees) {
+                    db.botDao().upsert(bot.copy(loyalty = (bot.loyalty * 0.5f).coerceIn(0f, 1f), state = "HOME"))
+                }
+            }
+        }
+
+        // 2. День: боты работают, здания получают выручку (упрощённо — по формуле)
+        for (building in buildings) {
+            val employees = workingBots.filter { it.workBuildingId == building.id }
+            val maxSales = employees.size * 10 // каждый сотрудник может обслужить до 10 клиентов
+            val potentialBuyers = allBots.filter {
+                it.wallet > building.price && it.workBuildingId != building.id &&
+                    (building.type != "AUTO_SERVICE" || it.hasCar)
+            }
+            val actualSales = min(maxSales, min(building.stock, potentialBuyers.size))
+            if (actualSales > 0) {
+                val revenue = actualSales * building.price
+                val cost = actualSales * building.costPrice
+                val rent = when (building.type) {
+                    "PRODUCTS" -> 20
+                    "AUTO_SERVICE" -> 30
+                    "CONSTRUCTION" -> 40
+                    "HEALTH" -> 50
+                    "ART" -> 100
+                    else -> 0
+                }
+                val tax = (revenue * Balance.TAX_RATE).toInt()
+                val profit = revenue - cost - rent - tax
+
+                db.buildingDao().upsert(
+                    building.copy(
+                        stock = building.stock - actualSales,
+                        cash = building.cash + revenue,
+                        soldToday = building.soldToday + actualSales,
+                        revenueTotal = building.revenueTotal + revenue
+                    )
+                )
+                // Боты-покупатели тратят деньги
+                val buyers = potentialBuyers.take(actualSales)
+                for (buyer in buyers) {
+                    db.botDao().upsert(buyer.copy(wallet = buyer.wallet - building.price))
+                }
+
+                totalRevenue += revenue
+                totalCost += cost
+                totalRent += rent
+                totalTax += tax
+
+                db.transactionDao().insert(
+                    TransactionEntity(kind = "INCOME", category = "bot_sales", amount = revenue, buildingId = building.id)
+                )
+                db.transactionDao().insert(
+                    TransactionEntity(kind = "EXPENSE", category = "cogs", amount = cost, buildingId = building.id)
+                )
+                db.transactionDao().insert(
+                    TransactionEntity(kind = "EXPENSE", category = "rent", amount = rent, buildingId = building.id)
+                )
+                if (tax > 0) {
+                    db.transactionDao().insert(
+                        TransactionEntity(kind = "EXPENSE", category = "tax", amount = tax, buildingId = building.id)
+                    )
+                }
+            }
+        }
+
+        // 3. Вечер: сброс дневных счётчиков
+        for (building in buildings) {
+            db.buildingDao().upsert(building.copy(soldToday = 0))
+        }
+
+        val profit = totalRevenue - totalCost - totalRent - totalTax - totalSalary
+        val playerWallet = db.walletDao().getOnce() ?: WalletEntity()
+        db.walletDao().upsert(playerWallet.copy(cash = playerWallet.cash + profit.coerceAtLeast(0)))
+
+        return DayResult(
+            totalSalary = totalSalary,
+            totalRevenue = totalRevenue,
+            totalCost = totalCost,
+            totalRent = totalRent,
+            totalTax = totalTax,
+            totalProfit = profit,
+            buildingsActive = buildings.count { it.isOpen },
+            botsWorking = workingBots.size
+        )
+    }
+
+    data class DayResult(
+        val totalSalary: Int,
+        val totalRevenue: Int,
+        val totalCost: Int,
+        val totalRent: Int,
+        val totalTax: Int,
+        val totalProfit: Int,
+        val buildingsActive: Int,
+        val botsWorking: Int
+    )
 
     suspend fun resetDay() {
-        val shop = db.shopDao().getOnce() ?: return
-        db.shopDao().upsert(shop.copy(soldToday = 0, revenueToday = 0))
-        // Новый день — новый план: возвращаем не потраченные банки в наличные
+        // Сброс банок плана
         val wallet = db.walletDao().getOnce()
         if (wallet != null) {
             db.walletDao().upsert(
@@ -233,17 +462,20 @@ class GameRepository(private val db: AppDatabase) {
                 )
             )
         }
-        // пополняем ботов зарплатой для следующего дня (упрощённый цикл без работодателей)
-        try {
-            val bots = db.botDao().getAllOnce()
-            if (bots.isNotEmpty()) {
-                val replenished = bots.map { it.copy(wallet = (it.wallet + 100).coerceAtMost(2000)) }
-                db.botDao().upsertAll(replenished)
-            }
-        } catch (_: Exception) {}
+        // Сброс soldToday у зданий
+        val buildings = db.buildingDao().observeAll().first()
+        for (b in buildings) {
+            db.buildingDao().upsert(b.copy(soldToday = 0))
+        }
+        // Пополнение ботов (зарплата уже выплачена в simulateDay, но для безработных — доход)
+        val bots = db.botDao().getAllOnce()
+        if (bots.isNotEmpty()) {
+            val replenished = bots.map { it.copy(wallet = (it.wallet + 100).coerceAtMost(2000)) }
+            db.botDao().upsertAll(replenished)
+        }
     }
 
-    /** Зарплата Милы-кассира: расход дня, списывается только если хватает баланса. */
+    // --- Зарплата кассира (совместимость со старым кодом) ---
     suspend fun payCashierSalary(hired: Boolean) {
         if (!hired) return
         val wallet = db.walletDao().getOnce() ?: return
@@ -254,7 +486,7 @@ class GameRepository(private val db: AppDatabase) {
         )
     }
 
-    /** Доход от участка: пассивная «аренда» каждый день. */
+    // --- Участок / аренда ---
     suspend fun payLotRent(owned: Boolean) {
         if (!owned) return
         val wallet = db.walletDao().getOnce() ?: return
@@ -264,7 +496,6 @@ class GameRepository(private val db: AppDatabase) {
         )
     }
 
-    /** Покупка второго здания: списывает участок из доступных. */
     suspend fun buyLot() {
         val wallet = db.walletDao().getOnce() ?: return
         val newCash = GameRules.spend(wallet.cash, Balance.LOT_PRICE) ?: return
@@ -274,7 +505,6 @@ class GameRepository(private val db: AppDatabase) {
         )
     }
 
-    /** Продажа здания дешевле, чем купил: урок «недвижимость теряет цену». */
     suspend fun sellLot() {
         val wallet = db.walletDao().getOnce() ?: return
         db.walletDao().upsert(wallet.copy(cash = wallet.cash + Balance.LOT_SELL_PRICE))
@@ -283,7 +513,7 @@ class GameRepository(private val db: AppDatabase) {
         )
     }
 
-    /** Покупка товара из каталога: списание, эффект питомца, транзакция. */
+    // --- Каталог покупок для питомца ---
     suspend fun buyCatalogItem(itemId: Int) {
         val catalog = db.catalogItemDao().observeAll().first()
         val item = catalog.find { it.id == itemId } ?: return
@@ -292,7 +522,6 @@ class GameRepository(private val db: AppDatabase) {
         val pet = db.petDao().getOnce() ?: PetEntity()
 
         val updated: WalletEntity? = when {
-            // План задан: тратим из своей банки (нужное/желаемое), наличные — как запас
             planSet && item.category == "NEED" -> {
                 val remaining = (wallet.needPlan + wallet.cash) - item.price
                 if (remaining < 0) null
@@ -313,7 +542,6 @@ class GameRepository(private val db: AppDatabase) {
                     wantFact = wallet.wantFact + item.price
                 )
             }
-            // План не задан: старая логика — тратим наличные
             !planSet -> {
                 val newCash = GameRules.spend(wallet.cash, item.price) ?: return
                 wallet.copy(cash = newCash)
@@ -331,15 +559,11 @@ class GameRepository(private val db: AppDatabase) {
             )
         )
         db.transactionDao().insert(
-            TransactionEntity(
-                kind     = "EXPENSE",
-                category = "shop_purchase",
-                amount   = item.price
-            )
+            TransactionEntity(kind = "EXPENSE", category = "shop_purchase", amount = item.price)
         )
     }
 
-    // --- Цели накопления ---
+    // --- Цели ---
     suspend fun addToGoal(goalId: Int, amount: Int) {
         val goals = db.goalDao().observeAll().first()
         val goal = goals.find { it.id == goalId } ?: return
@@ -347,7 +571,6 @@ class GameRepository(private val db: AppDatabase) {
         val planSet = wallet.needPlan + wallet.wantPlan + wallet.savePlan > 0
 
         val updated: WalletEntity? = if (planSet) {
-            // Из банки «Копилка», наличные — как запас
             if (wallet.savePlan + wallet.cash < amount) null
             else wallet.copy(
                 cash = if (wallet.savePlan >= amount) wallet.cash

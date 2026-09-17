@@ -17,29 +17,44 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.navArgument
 import com.example.financialliteracyapp.data.AppContainer
 import com.example.financialliteracyapp.ui.components.AppBottomBar
 import com.example.financialliteracyapp.ui.screens.adult.AdultScreen
 import com.example.financialliteracyapp.ui.screens.banks.BankScreen
+import com.example.financialliteracyapp.ui.screens.building.BuildingCashierScreen
+import com.example.financialliteracyapp.ui.screens.building.BuildingInteriorScreen
+import com.example.financialliteracyapp.ui.screens.building.CleaningGameScreen
 import com.example.financialliteracyapp.ui.screens.goals.GoalHubScreen
+import com.example.financialliteracyapp.ui.screens.kiosk.HireScreen
 import com.example.financialliteracyapp.ui.screens.kiosk.KioskScreen
 import com.example.financialliteracyapp.ui.screens.lot.LotScreen
 import com.example.financialliteracyapp.ui.screens.main.MainScreen
 import com.example.financialliteracyapp.ui.screens.map.MapScreen
+import com.example.financialliteracyapp.ui.screens.minigames.PricerGame
 import com.example.financialliteracyapp.ui.screens.minigames.ShelvesGame
+import com.example.financialliteracyapp.ui.screens.minigames.SuppliersGame
 import com.example.financialliteracyapp.ui.screens.onboarding.OnboardingScreen
 import com.example.financialliteracyapp.ui.screens.progress.ProgressScreen
 import com.example.financialliteracyapp.ui.screens.reference.ReferenceScreen
 import com.example.financialliteracyapp.ui.screens.report.ReportScreen
 import com.example.financialliteracyapp.ui.screens.shop.AccountingScreen
 
-/** Экран без нижней панели: онбординг и полноэкранные мини-игры. */
+/** Экран без нижней панели: онбординг, карта и полноэкранные мини-игры. */
 private val HIDDEN_BAR_ROUTES = setOf(
     Routes.ONBOARDING,
-    Routes.SHELVES
+    Routes.MAP,
+    Routes.BUILDING,
+    Routes.SHELVES,
+    Routes.SUPPLIERS,
+    Routes.PRICER,
+    Routes.CASHIER,
+    Routes.CLEANING,
+    Routes.HIRE
 )
 
 @Composable
@@ -108,8 +123,8 @@ fun AppNavGraph(
             }
             composable(Routes.MAP) {
                 MapScreen(
-                    onBack = { navController.popBackStack() },
-                    onOpenLot = { navController.navigate(Routes.LOT) }
+                    onGoHome = { navController.navigate(Routes.MAIN) },
+                    onOpenBuilding = { id -> navController.navigate("${Routes.BUILDING}/$id") }
                 )
             }
             composable(Routes.LOT) {
@@ -127,6 +142,53 @@ fun AppNavGraph(
                         }
                     },
                     onOpenShelves = { navController.navigate(Routes.SHELVES) }
+                )
+            }
+            composable(
+                route = "${Routes.BUILDING}/{buildingId}",
+                arguments = listOf(navArgument("buildingId") { type = NavType.LongType })
+            ) { backStackEntry ->
+                val buildingId = backStackEntry.arguments?.getLong("buildingId") ?: 0L
+                BuildingInteriorScreen(
+                    buildingId = buildingId,
+                    onExit = { navController.popBackStack() },
+                    onOpenSuppliers = { navController.navigate(Routes.SUPPLIERS) },
+                    onOpenShelves = { navController.navigate(Routes.SHELVES) },
+                    onOpenPricer = { navController.navigate(Routes.PRICER) },
+                    onOpenCashier = { navController.navigate("${Routes.CASHIER}/$buildingId") },
+                    onOpenCleaning = { navController.navigate("${Routes.CLEANING}/$buildingId") },
+                    onOpenHire = { navController.navigate(Routes.HIRE) },
+                    onOpenUpgrades = { navController.popBackStack() },
+                    onOpenAccounting = { navController.navigate(Routes.SHOP) }
+                )
+            }
+            composable(Routes.SUPPLIERS) {
+                SuppliersGame(onFinish = { navController.popBackStack() })
+            }
+            composable(Routes.PRICER) {
+                PricerGame(onFinish = { navController.popBackStack() })
+            }
+            composable(Routes.HIRE) {
+                HireScreen(onBack = { navController.popBackStack() })
+            }
+            composable(
+                route = "${Routes.CASHIER}/{buildingId}",
+                arguments = listOf(navArgument("buildingId") { type = NavType.LongType })
+            ) { backStackEntry ->
+                val cid = backStackEntry.arguments?.getLong("buildingId") ?: 0L
+                BuildingCashierScreen(
+                    buildingId = cid,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(
+                route = "${Routes.CLEANING}/{buildingId}",
+                arguments = listOf(navArgument("buildingId") { type = NavType.LongType })
+            ) { backStackEntry ->
+                val cid = backStackEntry.arguments?.getLong("buildingId") ?: 0L
+                CleaningGameScreen(
+                    buildingId = cid,
+                    onBack = { navController.popBackStack() }
                 )
             }
             composable(Routes.SHOP) {
