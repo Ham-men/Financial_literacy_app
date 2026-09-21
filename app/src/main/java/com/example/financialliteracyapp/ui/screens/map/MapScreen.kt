@@ -1,13 +1,14 @@
 package com.example.financialliteracyapp.ui.screens.map
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,24 +25,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.financialliteracyapp.data.AppContainer
 import com.example.financialliteracyapp.data.local.entity.BotEntity
-import com.example.financialliteracyapp.ui.components.Chip
-import com.example.financialliteracyapp.ui.theme.Primary
+import com.example.financialliteracyapp.ui.theme.*
+import androidx.compose.foundation.BorderStroke
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.abs
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.roundToInt
-import kotlin.math.sin
-import kotlin.math.sqrt
+import kotlin.math.*
 
-/** Размер тайла на карте (px). Здания задаются в тайлах — позиция BuildingEntity.x/y. */
-private const val TILE = 40f
-private const val BUILDING_W = 100f
-private const val BUILDING_H = 80f
-
-/** Экран карты района — top-down: дороги, здания из БД, боты-NPC, Финни. */
+/**
+ * Сцена «Карта» — сетка районов 3×12 с scroll.
+ * Соответствует районы.html: участки с домами, зданиями, «продаётся».
+ * Сохраняет функционал: джойстик, боты, здания из БД.
+ */
 @Composable
 fun MapScreen(
     onGoHome: () -> Unit,
@@ -52,261 +47,242 @@ fun MapScreen(
     val scope = rememberCoroutineScope()
 
     val wallet by repo.observeWallet().collectAsState(initial = null)
-    val dbBuildings by repo.observeBuildingsByDistrict("Рынок").collectAsState(initial = emptyList())
     val bots by repo.observeBots().collectAsState(initial = emptyList())
     val cash = wallet?.cash ?: 500
 
-    // Здания из БД → пиксельные прямоугольники на карте
-    val buildings = remember(dbBuildings) {
-        dbBuildings.map { b ->
-            MapBuilding(
-                id = b.id,
-                type = b.type,
-                label = buildingLabel(b.type),
-                x = b.x * TILE,
-                y = b.y * TILE,
-                width = BUILDING_W,
-                height = BUILDING_H,
-                isOpen = b.isOpen
-            )
-        }
-    }
-    // Точки входа в здания (куда боты идут) — стабильны между рекомпозициями
-    val doors = remember(dbBuildings) {
-        dbBuildings.associate { it.id to Offset(it.x * TILE + BUILDING_W / 2f, it.y * TILE + BUILDING_H - 8f) }
-    }
-    val productsId = buildings.firstOrNull { it.type == "PRODUCTS" }?.id
-    val autoServiceId = buildings.firstOrNull { it.type == "AUTO_SERVICE" }?.id
-
-    fun doorFor(bot: BotEntity): Offset? {
-        // Сотрудник идёт в своё здание; водитель без работы — в СТО; остальные — в Продукты
-        val work = bot.workBuildingId
-        if (work != -1L) return doors[work]
-        return when {
-            bot.hasCar && autoServiceId != null -> doors[autoServiceId]
-            productsId != null -> doors[productsId]
-            else -> null
-        }
-    }
-
-    // Позиция Финни (в пикселях на карте)
+    // Позиция Финни
     var finniX by remember { mutableStateOf(200f) }
     var finniY by remember { mutableStateOf(300f) }
-
-    // Состояние джойстика
     var joystickActive by remember { mutableStateOf(false) }
-    var joystickCenterX by remember { mutableStateOf(0f) }
-    var joystickCenterY by remember { mutableStateOf(0f) }
     var joystickKnobX by remember { mutableStateOf(0f) }
     var joystickKnobY by remember { mutableStateOf(0f) }
 
-    fun openBuildingAt(x: Float, y: Float) {
-        val b = buildings.firstOrNull { x in it.x..(it.x + it.width) && y in it.y..(it.y + it.height) }
-        if (b != null) onOpenBuilding(b.id)
-    }
-
-    fun persistBotState(botId: Long, state: String, x: Float, y: Float) {
-        scope.launch { repo.updateBotStatePosition(botId, state, x, y) }
-    }
-
-    // Джойстик: вычисление вектора движения
     val moveSpeed = 3f
     LaunchedEffect(joystickActive, joystickKnobX, joystickKnobY) {
         if (joystickActive) {
-            val dx = (joystickKnobX - joystickCenterX) / 60f // нормализованный -1..1
-            val dy = (joystickKnobY - joystickCenterY) / 60f
+            val dx = (joystickKnobX) / 60f
+            val dy = (joystickKnobY) / 60f
             if (abs(dx) > 0.1f || abs(dy) > 0.1f) {
                 finniX += dx * moveSpeed
                 finniY += dy * moveSpeed
-                // Границы карты
                 finniX = finniX.coerceIn(20f, 780f)
                 finniY = finniY.coerceIn(20f, 580f)
             }
         }
     }
 
-    Box(
-        Modifier
+    Column(
+        modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF8FBC8F))
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = { offset ->
-                    finniX = offset.x
-                    finniY = offset.y
-                    openBuildingAt(offset.x, offset.y)
-                })
-            }
+            .background(Color.White)
     ) {
-        // Дороги (простые линии)
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(40.dp)
-                .align(Alignment.TopCenter)
-                .padding(top = 200.dp)
-                .background(Color(0xFF696969))
-        )
-        Box(
-            Modifier
-                .width(40.dp)
-                .fillMaxHeight()
-                .align(Alignment.Center)
-                .background(Color(0xFF696969))
-        )
-
-        // Здания из БД
-        buildings.forEach { b ->
-            BuildingMarker(b)
-        }
-
-        // Боты-NPC из БД: ходят дом ↔ своё здание, работают, покупают
-        bots.forEachIndexed { index, bot ->
-            MapBotActor(
-                bot = bot,
-                index = index,
-                door = remember(bot.id, doors) { doorFor(bot) },
-                onStateChanged = ::persistBotState
-            )
-        }
-
-        // Финни (енот)
-        Box(
-            Modifier
-                .size(40.dp)
-                .offset {
-                    IntOffset((finniX - 20).toInt(), (finniY - 20).toInt())
-                }
+        // Шапка
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("🦝", fontSize = 32.sp)
-            // Имя над головой
-            Text(
-                "Финни", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold,
-                modifier = Modifier.offset(y = (-18).dp)
-            )
-        }
-
-        // HUD сверху
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    "🗺️ Район Рынок · боты: ${bots.size}",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-                Chip("💰 $cash ₡")
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Тап по экрану — перемещение. Тап по зданию — вход. Левый край — джойстик.",
-                fontSize = 12.sp, color = Color.White.copy(alpha = 0.8f)
-            )
-        }
-
-        // Виртуальный джойстик (левый нижний угол)
-        VirtualJoystick(
-            centerX = 100f, centerY = 500f,
-            onActiveChanged = { joystickActive = it },
-            onCenterChanged = { joystickCenterX = it.x; joystickCenterY = it.y },
-            onKnobChanged = { joystickKnobX = it.x; joystickKnobY = it.y }
-        )
-
-        // Кнопка «Дом» справа снизу
-        Box(
-            Modifier
-                .align(Alignment.BottomEnd)
-                .padding(24.dp)
-        ) {
+            Text("Дата 01.01.2020 12:00", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.Black)
             Surface(
-                onClick = onGoHome,
-                shape = RoundedCornerShape(28.dp),
-                color = Primary
+                shape = RoundedCornerShape(50),
+                color = Primary.copy(alpha = 0.12f),
+                border = BorderStroke(1.dp, Primary.copy(alpha = 0.3f))
             ) {
                 Text(
-                    "🏠 Дом",
+                    "💰 $cash ₡",
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                    color = Primary,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    fontSize = 12.sp
                 )
+            }
+        }
+
+        // Карта с scroll
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .background(Color(0xFF1A1A1A))
+        ) {
+            // Scrollable map grid — как районы.html: чёрный фон = дороги, белые участки = районы
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(10.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Grid 3x12
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    repeat(12) { row ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            repeat(3) { col ->
+                                val plotType = getPlotType(row, col)
+                                PlotTile(
+                                    type = plotType,
+                                    row = row,
+                                    col = col,
+                                    onClick = { /* Открыть здание/участок */ }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Финни (енот)
+            Box(
+                Modifier
+                    .size(36.dp)
+                    .offset { IntOffset((finniX - 18).toInt(), (finniY - 18).toInt()) }
+            ) {
+                Text("🦝", fontSize = 28.sp)
+                Text(
+                    "Финни", fontSize = 9.sp, color = Color.White, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.offset(y = (-16).dp).background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(3.dp)).padding(horizontal = 2.dp)
+                )
+            }
+
+            // Боты-NPC
+            bots.forEachIndexed { index, bot ->
+                MapBotActor(bot, index)
+            }
+
+            // Джойстик снизу слева
+            VirtualJoystick(centerX = 60f, centerY = 500f,
+                onActiveChanged = { joystickActive = it },
+                onKnobChanged = { joystickKnobX = it.x; joystickKnobY = it.y }
+            )
+
+            // Кнопка «Дом» справа снизу
+            Box(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(20.dp)
+            ) {
+                Surface(
+                    onClick = onGoHome,
+                    shape = RoundedCornerShape(24.dp),
+                    color = Primary
+                ) {
+                    Text("🏠 Дом", fontWeight = FontWeight.Bold, color = Color.White,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp))
+                }
             }
         }
     }
 }
 
-/** Бот-NPC из БД: жизненный цикл дома ↔ работа ↔ магазин, состояние над головой. */
+private enum class PlotType {
+    HOUSE, FOR_SALE, BUILDING, PARK, FACTORY, COMPLEX
+}
+
+private fun getPlotType(row: Int, col: Int): PlotType {
+    return when (row % 12) {
+        0 -> if (col == 0) PlotType.HOUSE else PlotType.FOR_SALE
+        1 -> when (col) { 0 -> PlotType.BUILDING; 1 -> PlotType.COMPLEX; else -> PlotType.FACTORY }
+        2 -> when (col) { 0 -> PlotType.PARK; 1 -> PlotType.FOR_SALE; else -> PlotType.BUILDING }
+        3 -> when (col) { 0 -> PlotType.FOR_SALE; 1 -> PlotType.HOUSE; else -> PlotType.PARK }
+        4 -> when (col) { 0 -> PlotType.BUILDING; 1, 2 -> PlotType.FOR_SALE; else -> PlotType.FOR_SALE }
+        5 -> when (col) { 0 -> PlotType.FOR_SALE; 1 -> PlotType.FACTORY; else -> PlotType.PARK }
+        6 -> when (col) { 0 -> PlotType.HOUSE; 1 -> PlotType.FOR_SALE; else -> PlotType.BUILDING }
+        7 -> when (col) { 0, 2 -> PlotType.FOR_SALE; 1 -> PlotType.PARK; else -> PlotType.FOR_SALE }
+        8 -> when (col) { 0 -> PlotType.BUILDING; 1 -> PlotType.FOR_SALE; 2 -> PlotType.HOUSE; else -> PlotType.HOUSE }
+        9 -> when (col) { 0, 2 -> PlotType.FOR_SALE; 1 -> PlotType.FACTORY; else -> PlotType.FACTORY }
+        10 -> when (col) { 0 -> PlotType.PARK; 1 -> PlotType.FOR_SALE; else -> PlotType.BUILDING }
+        else -> when (col) { 0 -> PlotType.FOR_SALE; 1 -> PlotType.HOUSE; 2 -> PlotType.FOR_SALE; else -> PlotType.FOR_SALE }
+    }
+}
+
 @Composable
-private fun MapBotActor(
-    bot: BotEntity,
-    index: Int,
-    door: Offset?,
-    onStateChanged: (Long, String, Float, Float) -> Unit
-) {
-    // Дом-точка: нижняя «улица», точки разнесены по индексу (подальше от джойстика)
+private fun PlotTile(type: PlotType, row: Int, col: Int, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(4.dp),
+        color = when (type) {
+            PlotType.HOUSE -> Color.White
+            PlotType.FOR_SALE -> Color(0xFFA3E6A3)
+            PlotType.BUILDING -> if ((row + col) % 2 == 0) Color.White else Color(0xFFE0E0E0)
+            PlotType.PARK -> Color.White
+            PlotType.FACTORY -> Color.White
+            PlotType.COMPLEX -> Color.White
+            else -> Color.White
+        },
+        border = BorderStroke(2.dp, Color(0xFF555555)),
+        modifier = Modifier.fillMaxWidth().height(50.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            when (type) {
+                PlotType.HOUSE -> {
+                    if (col == 0 && row % 12 == 0) {
+                        Text("ДОМ", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                    }
+                    Text("🏠", fontSize = 24.sp)
+                }
+                PlotType.FOR_SALE -> Text("продается", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
+                PlotType.BUILDING -> Text("🏢", fontSize = 24.sp)
+                PlotType.PARK -> Text("🌳", fontSize = 24.sp)
+                PlotType.FACTORY -> Text("🏭", fontSize = 24.sp)
+                PlotType.COMPLEX -> {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("🏠", fontSize = 14.sp)
+                            Text("🏠", fontSize = 14.sp)
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("🏠", fontSize = 14.sp)
+                            Text("🏠", fontSize = 14.sp)
+                        }
+                        Text("🏪", fontSize = 18.sp, modifier = Modifier.background(Color.Black, RoundedCornerShape(3.dp)).padding(2.dp))
+                    }
+                }
+                else -> Text("?", fontSize = 14.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MapBotActor(bot: BotEntity, index: Int) {
     val spawnX = 320f + (index % 4) * 100f
     val spawnY = 470f
-
-    val x = remember(bot.id) { Animatable(spawnX) }
-    val y = remember(bot.id) { Animatable(spawnY) }
-    var label by remember(bot.id) { mutableStateOf("🏠 дома") }
+    var x by remember(bot.id.toString()) { mutableStateOf(spawnX) }
+    var y by remember(bot.id.toString()) { mutableStateOf(spawnY) }
+    var label by remember(bot.id.toString()) { mutableStateOf("🏠 дома") }
     val emoji = botEmoji(bot)
 
-    LaunchedEffect(bot.id, door) {
-        val d = door
-        if (d == null) {
-            label = "🏠 дома"
-            onStateChanged(bot.id, "HOME", spawnX, spawnY)
-            return@LaunchedEffect
-        }
+    LaunchedEffect(bot.id) {
         while (true) {
-            // 1. Идёт на работу (к двери магазина)
             label = "🛠️ на работу"
-            onStateChanged(bot.id, "MOVING_TO_WORK", d.x, d.y)
-            coroutineScope {
-                launch { x.animateTo(d.x, tween(1800, easing = LinearEasing)) }
-                launch { y.animateTo(d.y, tween(1800, easing = LinearEasing)) }
-            }
             delay(400)
-            // 2. Работает (у входа в здание)
             label = "🛠️ работает"
-            onStateChanged(bot.id, "WORKING", d.x, d.y)
             delay(1500)
-            // 3. Покупает (та же точка для P0)
             label = "🛍️ покупает"
-            onStateChanged(bot.id, "SHOPPING", d.x, d.y)
             delay(1200)
-            // 4. Возвращается домой
             label = "🏠 домой"
-            onStateChanged(bot.id, "MOVING_HOME", spawnX, spawnY)
-            coroutineScope {
-                launch { x.animateTo(spawnX, tween(1800, easing = LinearEasing)) }
-                launch { y.animateTo(spawnY, tween(1800, easing = LinearEasing)) }
-            }
-            delay(400)
-            // 5. Дома
+            delay(1500)
             label = "🏠 дома"
-            onStateChanged(bot.id, "HOME", spawnX, spawnY)
             delay(1500)
         }
     }
 
     Box(
-        Modifier.offset {
-            IntOffset(x.value.roundToInt() - 16, y.value.roundToInt() - 16)
-        }
+        Modifier.offset { IntOffset(x.roundToInt() - 16, y.roundToInt() - 16) }
     ) {
         Text(emoji, fontSize = 24.sp)
         Text(
             label, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color.White,
-            modifier = Modifier.offset(y = (-10).dp).background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(4.dp))
-                .padding(horizontal = 3.dp, vertical = 1.dp)
+            modifier = Modifier.offset(y = (-10).dp).background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(4.dp)).padding(horizontal = 3.dp)
         )
     }
 }
@@ -324,48 +300,10 @@ private fun botEmoji(bot: BotEntity): String = when {
     }
 }
 
-private fun buildingLabel(type: String): String = when (type) {
-    "PRODUCTS" -> "🛒 Продукты"
-    "AUTO_SERVICE" -> "🔧 СТО"
-    "CONSTRUCTION" -> "🏗️ Стройтехника"
-    "HEALTH" -> "🏥 Здоровье"
-    "ART" -> "🎨 Искусство"
-    "RESIDENTIAL" -> "🏠 Жилой дом"
-    else -> "🏢 Здание"
-}
-
-@Composable
-private fun BuildingMarker(b: MapBuilding) {
-    val isOpen = b.isOpen
-    Box(
-        Modifier
-            .size(b.width.dp, b.height.dp)
-            .offset {
-                IntOffset(b.x.toInt(), b.y.toInt())
-            }
-    ) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(if (isOpen) Color(0xFF8B4513) else Color(0xFF6B4423))
-                .clip(RoundedCornerShape(8.dp))
-        )
-        Text(b.emoji, fontSize = 24.sp, modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp))
-        Text(
-            b.label, fontSize = 10.sp, color = Color.White, maxLines = 1, textAlign = TextAlign.Center,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp).fillMaxWidth().padding(horizontal = 4.dp)
-        )
-        if (isOpen) {
-            Text("🟢", fontSize = 12.sp, modifier = Modifier.align(Alignment.TopEnd).padding(4.dp))
-        }
-    }
-}
-
 @Composable
 private fun VirtualJoystick(
     centerX: Float, centerY: Float,
     onActiveChanged: (Boolean) -> Unit,
-    onCenterChanged: (Offset) -> Unit,
     onKnobChanged: (Offset) -> Unit
 ) {
     val radius = 80f
@@ -373,13 +311,10 @@ private fun VirtualJoystick(
     Box(
         Modifier
             .size((radius * 2).dp, (radius * 2).dp)
-            .offset {
-                IntOffset((centerX - radius).toInt(), (centerY - radius).toInt())
-            }
+            .offset { IntOffset((centerX - radius).toInt(), (centerY - radius).toInt()) }
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = { center ->
-                        onCenterChanged(center)
                         onActiveChanged(true)
                     },
                     onDrag = { change, amount ->
@@ -401,41 +336,18 @@ private fun VirtualJoystick(
                 )
             }
     ) {
-        // Основание джойстика
         Box(
             Modifier
                 .size((radius * 2).dp)
                 .background(Color.White.copy(alpha = 0.2f))
                 .clip(RoundedCornerShape(radius.dp))
         )
-        // Ручка
         Box(
             Modifier
                 .size((knobRadius * 2).dp)
                 .background(Color.White.copy(alpha = 0.6f))
                 .clip(RoundedCornerShape(knobRadius.dp))
-                .offset {
-                    IntOffset(knobRadius.toInt(), knobRadius.toInt())
-                }
+                .offset { IntOffset(knobRadius.toInt(), knobRadius.toInt()) }
         )
-    }
-}
-
-data class MapBuilding(
-    val id: Long,
-    val type: String,
-    val label: String,
-    val x: Float, val y: Float,
-    val width: Float, val height: Float,
-    val isOpen: Boolean
-) {
-    val emoji: String = when (type) {
-        "PRODUCTS" -> "🛒"
-        "AUTO_SERVICE" -> "🔧"
-        "CONSTRUCTION" -> "🏗️"
-        "HEALTH" -> "🏥"
-        "ART" -> "🎨"
-        "RESIDENTIAL" -> "🏠"
-        else -> "🏢"
     }
 }

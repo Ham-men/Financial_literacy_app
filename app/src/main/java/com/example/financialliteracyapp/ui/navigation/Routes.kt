@@ -26,4 +26,7 @@ object Routes {
     const val REFERENCE = "reference"
     const val ADULT = "adult"
     const val BUILDING = "building"
+    const val FOOD = "food"
+    const val CONSTRUCTION = "construction"
+    const val AUTO_SERVICE = "auto_service"
 }

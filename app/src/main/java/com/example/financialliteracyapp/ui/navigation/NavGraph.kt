@@ -1,11 +1,12 @@
 package com.example.financialliteracyapp.ui.navigation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -23,12 +24,15 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import com.example.financialliteracyapp.data.AppContainer
-import com.example.financialliteracyapp.ui.components.AppBottomBar
+import com.example.financialliteracyapp.ui.components.HeaderBar
 import com.example.financialliteracyapp.ui.screens.adult.AdultScreen
 import com.example.financialliteracyapp.ui.screens.banks.BankScreen
+import com.example.financialliteracyapp.ui.screens.autoservice.AutoServiceScreen
 import com.example.financialliteracyapp.ui.screens.building.BuildingCashierScreen
 import com.example.financialliteracyapp.ui.screens.building.BuildingInteriorScreen
 import com.example.financialliteracyapp.ui.screens.building.CleaningGameScreen
+import com.example.financialliteracyapp.ui.screens.construction.ConstructionScreen
+import com.example.financialliteracyapp.ui.screens.food.FoodScreen
 import com.example.financialliteracyapp.ui.screens.goals.GoalHubScreen
 import com.example.financialliteracyapp.ui.screens.kiosk.HireScreen
 import com.example.financialliteracyapp.ui.screens.kiosk.KioskScreen
@@ -44,7 +48,7 @@ import com.example.financialliteracyapp.ui.screens.reference.ReferenceScreen
 import com.example.financialliteracyapp.ui.screens.report.ReportScreen
 import com.example.financialliteracyapp.ui.screens.shop.AccountingScreen
 
-/** Экран без нижней панели: онбординг, карта и полноэкранные мини-игры. */
+/** Экран без боковой панели: онбординг, карта и полноэкранные мини-игры. */
 private val HIDDEN_BAR_ROUTES = setOf(
     Routes.ONBOARDING,
     Routes.MAP,
@@ -54,7 +58,10 @@ private val HIDDEN_BAR_ROUTES = setOf(
     Routes.PRICER,
     Routes.CASHIER,
     Routes.CLEANING,
-    Routes.HIRE
+    Routes.HIRE,
+    Routes.FOOD,
+    Routes.CONSTRUCTION,
+    Routes.AUTO_SERVICE
 )
 
 @Composable
@@ -66,7 +73,6 @@ fun AppNavGraph(
     val prefs = remember { AppContainer.prefs(context) }
     val onboardingDone by prefs.onboardingDone.collectAsState(initial = null)
 
-    // Стартуем с онбординга только при первом запуске. Дальше — сразу на главную.
     var effectiveStart by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(onboardingDone) {
         if (onboardingDone != null) {
@@ -86,21 +92,21 @@ fun AppNavGraph(
     val currentRoute = backStackEntry?.destination?.route
     val showBar = currentRoute != null && currentRoute !in HIDDEN_BAR_ROUTES
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            if (showBar) {
-                AppBottomBar(
-                    currentRoute = currentRoute,
-                    onNavigate = { route -> navigateToTab(navController, route) }
-                )
-            }
+    // Используем Row: слева HeaderBar, справа контент
+    Row(Modifier.fillMaxSize()) {
+        // Левая навигация — всегда сверху, не перекрывается
+        if (showBar) {
+            HeaderBar(
+                currentRoute = currentRoute,
+                onNavigate = { route -> navigateToTab(navController, route) }
+            )
         }
-    ) { padding ->
+
+        // Основной контент — NavHost занимает оставшееся место
         NavHost(
             navController = navController,
             startDestination = start,
-            modifier = Modifier.padding(padding)
+            modifier = Modifier.weight(1f)
         ) {
             composable(Routes.ONBOARDING) {
                 OnboardingScreen(onFinish = {
@@ -191,16 +197,6 @@ fun AppNavGraph(
                     onBack = { navController.popBackStack() }
                 )
             }
-            composable(Routes.SHOP) {
-                AccountingScreen(
-                    onBack          = { navController.popBackStack() },
-                    onOpenReport    = {
-                        navController.navigate(Routes.REPORT) {
-                            popUpTo(Routes.SHOP) { inclusive = false }
-                        }
-                    }
-                )
-            }
             composable(Routes.SHELVES) {
                 ShelvesGame(onFinish = { navController.popBackStack() })
             }
@@ -222,6 +218,15 @@ fun AppNavGraph(
             }
             composable(Routes.ADULT) {
                 AdultScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.FOOD) {
+                FoodScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.CONSTRUCTION) {
+                ConstructionScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.AUTO_SERVICE) {
+                AutoServiceScreen(onBack = { navController.popBackStack() })
             }
         }
     }
