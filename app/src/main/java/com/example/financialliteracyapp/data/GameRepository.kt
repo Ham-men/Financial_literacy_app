@@ -226,11 +226,36 @@ class GameRepository(private val db: AppDatabase) {
         db.botDao().upsert(bot.copy(state = state, targetX = x, targetY = y))
     }
 
-    // --- Банки (план/факт) ---
+    // --- Банки (мешок ↔ 3 банки: карман/желаемое/копилка) ---
+    /** Перенос монеты (или выбранной суммы) из мешка в банку. */
+    suspend fun moveBagToBank(bank: String, amount: Int) {
+        if (amount <= 0) return
+        val w = db.walletDao().getOnce() ?: return
+        if (w.cash < amount) return
+        val updated = when (bank) {
+            "NEED" -> w.copy(cash = w.cash - amount, needPlan = w.needPlan + amount)
+            "WANT" -> w.copy(cash = w.cash - amount, wantPlan = w.wantPlan + amount)
+            "SAVE" -> w.copy(cash = w.cash - amount, savePlan = w.savePlan + amount)
+            else -> return
+        }
+        db.walletDao().upsert(updated)
+    }
+
+    /** «Вывести всё в мешок»: все деньги из всех банок обратно в мешок (cash). */
+    suspend fun withdrawAllToBag() {
+        val w = db.walletDao().getOnce() ?: return
+        db.walletDao().upsert(
+            w.copy(
+                cash = w.cash + w.needPlan + w.wantPlan + w.savePlan,
+                needPlan = 0, wantPlan = 0, savePlan = 0
+            )
+        )
+    }
+
+    /** Все доходы идут в мешок (cash). Распределение по банкам — только тут. */
     suspend fun distributeBanks(needPlan: Int, wantPlan: Int, savePlan: Int) {
         val w = db.walletDao().getOnce() ?: WalletEntity()
-        val total = w.cash + w.needPlan + w.wantPlan + w.savePlan
-        val alloc = GameRules.solvePlan(total, needPlan, wantPlan, savePlan)
+        val alloc = GameRules.solvePlan(w.cash, needPlan, wantPlan, savePlan)
         db.walletDao().upsert(
             w.copy(cash = alloc.cashRemainder, needPlan = alloc.need, wantPlan = alloc.want, savePlan = alloc.save)
         )
@@ -482,16 +507,19 @@ class GameRepository(private val db: AppDatabase) {
     )
 
     suspend fun resetDay() {
-        // Сброс банок плана
+        // Копилка — накопительный счёт: проценты возвращаются в банку копилка.
         val wallet = db.walletDao().getOnce()
         if (wallet != null) {
+            val interest = GameRules.saveInterest(wallet.savePlan, Balance.SAVE_INTEREST_PERCENT)
+            // Факт за день сбрасывается, банки остаются (перераспределение — кнопкой «Вывести всё в мешок»).
             db.walletDao().upsert(
-                wallet.copy(
-                    cash = wallet.cash + wallet.needPlan + wallet.wantPlan + wallet.savePlan,
-                    needPlan = 0, wantPlan = 0, savePlan = 0,
-                    needFact = 0, wantFact = 0, saveFact = 0
-                )
+                wallet.copy(savePlan = wallet.savePlan + interest, needFact = 0, wantFact = 0, saveFact = 0)
             )
+            if (interest > 0) {
+                db.transactionDao().insert(
+                    TransactionEntity(kind = "INCOME", category = "save_interest", amount = interest)
+                )
+            }
         }
         // Сброс soldToday у зданий
         val buildings = db.buildingDao().observeAll().first()

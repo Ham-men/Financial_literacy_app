@@ -27,6 +27,16 @@ object GameRules {
     /** Правило «нельзя уйти в минус»: вернёт остаток, если хватает, иначе null. */
     fun spend(cash: Int, cost: Int): Int? = if (cash >= cost) cash - cost else null
 
+    /** Монеты для мешка: сколько целых монет номинала 50 и остаток. */
+    fun bagCoins(cash: Int, denom: Int = 50): Pair<Int, Int> {
+        val safe = cash.coerceAtLeast(0)
+        return (safe / denom) to (safe % denom)
+    }
+
+    /** Процент по копилке за день: возвращается в копилку. */
+    fun saveInterest(save: Int, percent: Int = 5): Int =
+        save.coerceAtLeast(0) * percent / 100
+
     // --- Правило: копилка (цель) не уходит в минус и не превышает цель ---
     fun capGoalDeposit(current: Int, target: Int, amount: Int): Int =
         (current + amount).coerceAtMost(target)
@@ -55,7 +65,8 @@ object GameRules {
         "bot_sales",
         "lot_rent",
         "lot_sale",
-        "goal_withdraw"
+        "goal_withdraw",
+        "save_interest"
     )
 
     /** Доход обязан иметь источник; расход не ограничен. */

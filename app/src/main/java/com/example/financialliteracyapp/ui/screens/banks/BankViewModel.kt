@@ -12,8 +12,14 @@ class BankViewModel(private val repo: GameRepository) : ViewModel() {
     val wallet = repo.observeWallet()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    fun confirm(needPlan: Int, wantPlan: Int, savePlan: Int) {
-        viewModelScope.launch { repo.distributeBanks(needPlan, wantPlan, savePlan) }
+    /** Перенос монеты/суммы из мешка в банку. */
+    fun moveToBank(bank: String, amount: Int) {
+        viewModelScope.launch { repo.moveBagToBank(bank, amount) }
+    }
+
+    /** «Вывести всё в мешок» — вернуть все банки обратно. */
+    fun withdrawAllToBag() {
+        viewModelScope.launch { repo.withdrawAllToBag() }
     }
 
     companion object {

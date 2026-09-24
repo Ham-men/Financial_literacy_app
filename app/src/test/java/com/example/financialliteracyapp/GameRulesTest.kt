@@ -174,7 +174,45 @@ class GameRulesTest {
 
     @Test
     fun knownIncomeSources_containAllUsedInApp() {
-        val used = setOf("start_gift", "daily_allowance", "quest_reward", "shop_sale", "bot_sales", "goal_withdraw", "lot_rent", "lot_sale")
+        val used = setOf("start_gift", "daily_allowance", "quest_reward", "shop_sale", "bot_sales", "goal_withdraw", "lot_rent", "lot_sale", "save_interest")
         assertTrue(GameRules.KNOWN_INCOME_SOURCES.containsAll(used))
+    }
+
+    // --- Правило 6: мешок раскладывается монетами по 50 + остаток ---
+
+    @Test
+    fun bagCoins_splitsInto50AndRemainder() {
+        assertEquals(6 to 0, GameRules.bagCoins(300))
+        assertEquals(1 to 20, GameRules.bagCoins(70))
+        assertEquals(0 to 5, GameRules.bagCoins(5))
+        assertEquals(0 to 0, GameRules.bagCoins(0))
+    }
+
+    @Test
+    fun bagCoins_neverNegative() {
+        for (cash in -50..500 step 7) {
+            val (full, rem) = GameRules.bagCoins(cash)
+            assertTrue(full >= 0)
+            assertTrue(rem >= 0)
+            assertTrue(rem < 50)
+            assertEquals(cash.coerceAtLeast(0), full * 50 + rem)
+        }
+    }
+
+    // --- Правило 7: проценты по копилке ---
+
+    @Test
+    fun saveInterest_accruesOnPiggyBank() {
+        assertEquals(5, GameRules.saveInterest(100))
+        assertEquals(2, GameRules.saveInterest(50))
+        assertEquals(15, GameRules.saveInterest(300))
+        assertEquals(0, GameRules.saveInterest(0))
+    }
+
+    @Test
+    fun saveInterest_neverNegative() {
+        for (save in -50..500 step 13) {
+            assertTrue(GameRules.saveInterest(save) >= 0)
+        }
     }
 }

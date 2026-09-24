@@ -22,6 +22,9 @@ object Balance {
     const val LOT_SELL_PRICE = 200
     const val LOT_RENT_PER_DAY = 10
 
+    const val COIN_DENOM = 50
+    const val SAVE_INTEREST_PERCENT = 5
+
     const val PURCHASE_THRESHOLD = 0.30
     const val REF_INCOME = 1500.0
 
