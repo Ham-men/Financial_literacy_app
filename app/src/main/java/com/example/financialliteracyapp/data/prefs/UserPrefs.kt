@@ -22,6 +22,7 @@ class UserPrefs(private val context: Context) {
     val cashierHired: Flow<Boolean> = context.dataStore.data.map { it[CASHIER] ?: false }
     val lotPurchased: Flow<Boolean> = context.dataStore.data.map { it[LOT_PURCHASED] ?: false }
     val lotType: Flow<Int> = context.dataStore.data.map { it[LOT_TYPE] ?: 0 }
+    val lotPlotId: Flow<String> = context.dataStore.data.map { it[LOT_PLOT_ID] ?: "" }
 
     suspend fun setPetName(name: String) {
         context.dataStore.edit { it[PET_NAME] = name }
@@ -55,6 +56,10 @@ class UserPrefs(private val context: Context) {
         context.dataStore.edit { it[LOT_TYPE] = type }
     }
 
+    suspend fun setLotPlotId(plotId: String) {
+        context.dataStore.edit { it[LOT_PLOT_ID] = plotId }
+    }
+
     companion object {
         private val PET_NAME = stringPreferencesKey("pet_name")
         private val SOUND = booleanPreferencesKey("sound")
@@ -64,5 +69,6 @@ class UserPrefs(private val context: Context) {
         private val CASHIER = booleanPreferencesKey("cashier_hired")
         private val LOT_PURCHASED = booleanPreferencesKey("lot_purchased")
         private val LOT_TYPE = intPreferencesKey("lot_type")
+        private val LOT_PLOT_ID = stringPreferencesKey("lot_plot_id")
     }
 }

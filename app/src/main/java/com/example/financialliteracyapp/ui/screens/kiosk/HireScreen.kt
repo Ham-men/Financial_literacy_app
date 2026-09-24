@@ -44,22 +44,22 @@ fun HireScreen(onBack: () -> Unit, embedded: Boolean = false) {
     ) {
         // Заголовок
         Row(
-            Modifier.fillMaxWidth().padding(16.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (!embedded) {
                 Surface(
                     onClick = onBack,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(10.dp),
                     color = MaterialTheme.colorScheme.surface
                 ) {
-                    Text("◀", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 16.sp)
+                    Text("◀", Modifier.padding(horizontal = 10.dp, vertical = 6.dp), fontSize = 14.sp)
                 }
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(8.dp))
             }
             Text(
                 "🏢 Кабинет найма",
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.weight(1f)
             )
             Spacer(Modifier.width(8.dp))
@@ -70,101 +70,101 @@ fun HireScreen(onBack: () -> Unit, embedded: Boolean = false) {
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(400.dp)
+                .height(260.dp)
                 .background(Color(0xFFE8E2D4))
         ) {
             // Стена
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .height(150.dp)
+                    .height(110.dp)
                     .align(Alignment.TopCenter)
                     .background(Color(0xFFDCD3C0))
             )
             // Табличка зарплаты на стене
             Surface(
-                Modifier.align(Alignment.TopCenter).padding(top = 30.dp),
+                Modifier.align(Alignment.TopCenter).padding(top = 18.dp),
                 shape = RoundedCornerShape(8.dp),
                 color = Color(0xFFFFF8E1)
             ) {
                 Column(
-                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("💼 Вакансия: кассир", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Text("Зарплата ${Balance.CASHIER_SALARY} ₡ в день", fontSize = 12.sp, color = TextSecondary)
-                    Text("Сама стоит на кассе, ты отдыхаешь", fontSize = 12.sp, color = Accent)
+                    Text("💼 Вакансия: кассир", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text("Зарплата ${Balance.CASHIER_SALARY} ₡ в день", fontSize = 11.sp, color = TextSecondary)
+                    Text("Сама стоит на кассе, ты отдыхаешь", fontSize = 11.sp, color = Accent)
                 }
             }
             // Стол в центре
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .height(90.dp)
+                    .height(60.dp)
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 40.dp)
-                    .padding(horizontal = 40.dp)
+                    .padding(bottom = 24.dp)
+                    .padding(horizontal = 30.dp)
                     .background(Color(0xFF6D4C41), RoundedCornerShape(8.dp))
             )
             // Стул руководителя (валидный собес по-взрослому)
             Column(
                 Modifier
                     .align(Alignment.BottomStart)
-                    .padding(start = 28.dp, bottom = 118.dp),
+                    .padding(start = 24.dp, bottom = 84.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("🪑", fontSize = 32.sp)
+                Text("🪑", fontSize = 20.sp)
             }
             // Финни за столом (интервьюер)
             Text(
                 "🦝",
-                fontSize = 46.sp,
-                modifier = Modifier.align(Alignment.Center).padding(bottom = 108.dp)
+                fontSize = 30.sp,
+                modifier = Modifier.align(Alignment.Center).padding(bottom = 70.dp)
             )
             // Мила-кассир (справа, стоит с резюме)
             Text(
                 "👩",
-                fontSize = 46.sp,
-                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 28.dp, bottom = 108.dp)
+                fontSize = 30.sp,
+                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 22.dp, bottom = 70.dp)
             )
             Text(
                 "📄",
-                fontSize = 20.sp,
-                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 74.dp, bottom = 108.dp)
+                fontSize = 14.sp,
+                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 56.dp, bottom = 70.dp)
             )
         }
 
         // Текущий статус
-        AppCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+        AppCard(modifier = Modifier.padding(horizontal = 12.dp)) {
             Text(
                 if (cashierHired) "👩 Мила работает кассиром" else "👩 Мила ждёт ответа",
                 fontWeight = FontWeight.Bold,
-                fontSize = 15.sp
+                fontSize = 13.sp
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(4.dp))
             Text(
                 if (cashierHired)
-                    "Мила сама считает сдачу на кассе — «Кассу» можно пропускать. Зарплата ${Balance.CASHIER_SALARY} ₡ списывается в конце дня, только если баланс позволяет (в минус не уходим)."
+                    "Мила сама считает сдачу на кассе — «Кассу» можно пропускать. Зарплата ${Balance.CASHIER_SALARY} ₡ списывается в конце дня, только если баланс позволяет."
                 else
-                    "Мила — быстрый и честный кассир. Если нанять её, зарплата ${Balance.CASHIER_SALARY} ₡ в день станет расходом ларька.",
-                fontSize = 13.sp,
+                    "Мила — быстрый и честный кассир. Зарплата ${Balance.CASHIER_SALARY} ₡ в день станет расходом ларька.",
+                fontSize = 12.sp,
                 color = TextSecondary
             )
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(8.dp))
 
         if (cashierHired) {
             BigActionButton(
                 "✅ Мила на кассе",
                 PrimaryDark,
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                 onClick = onBack
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             OutlinedButton(
                 onClick = { scope.launch { prefs.setCashierHired(false) } },
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp)
             ) {
                 Text("❌ Уволить Милу")
             }
@@ -172,29 +172,29 @@ fun HireScreen(onBack: () -> Unit, embedded: Boolean = false) {
             BigActionButton(
                 "👩 Нанять Милу (${Balance.CASHIER_SALARY} ₡/день)",
                 Primary,
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp)
             ) {
                 scope.launch { prefs.setCashierHired(true) }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             OutlinedButton(
                 onClick = onBack,
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp)
             ) {
                 Text("Пока сам")
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(8.dp))
 
         Text(
-            "Подсказка: найм выгоден на больших продажах — освобождает время\nи ускоряет обслуживание покупателей. Но зарплату надо платить каждый день.",
-            fontSize = 12.sp,
+            "Подсказка: найм выгоден на больших продажах — освобождает время.\nНо зарплату надо платить каждый день.",
+            fontSize = 11.sp,
             color = TextSecondary,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
         )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(12.dp))
     }
 }

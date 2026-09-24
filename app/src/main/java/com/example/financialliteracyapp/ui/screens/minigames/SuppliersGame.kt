@@ -50,27 +50,26 @@ fun SuppliersGame(onFinish: () -> Unit, embedded: Boolean = false) {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(10.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (!embedded) {
                 Surface(
                     onClick = onFinish,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(10.dp),
                     color = MaterialTheme.colorScheme.surface
                 ) {
-                    Text("◀", Modifier.padding(horizontal = 12.dp, vertical = 8.dp), fontSize = 16.sp)
+                    Text("◀", Modifier.padding(horizontal = 10.dp, vertical = 6.dp), fontSize = 14.sp)
                 }
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(8.dp))
             }
             Text("🧾 Закупка у поставщика",
-                style = MaterialTheme.typography.headlineMedium)
+                style = MaterialTheme.typography.titleLarge)
         }
+        Spacer(Modifier.height(4.dp))
+        Text("Купи $units лимонадов по лучшей цене · Доступно: $cash ₡",
+            color = TextSecondary, fontSize = 12.sp)
         Spacer(Modifier.height(8.dp))
-        Text("Нужно купить $units лимонадов по лучшей цене",
-            color = TextSecondary, fontSize = 14.sp)
-        Text("Доступно: $cash ₡", color = TextSecondary, fontSize = 13.sp)
-        Spacer(Modifier.height(24.dp))
 
         suppliersUi.forEachIndexed { index, s ->
             SupplierCard(
@@ -78,21 +77,20 @@ fun SuppliersGame(onFinish: () -> Unit, embedded: Boolean = false) {
                 selected = selected == index,
                 onClick = { selected = index }
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(6.dp))
         }
 
-        Spacer(Modifier.weight(1f))
-
         if (selected >= 0) {
+            Spacer(Modifier.height(4.dp))
             Text(
                 "Стоимость: ${(suppliersUi[selected].pricePerUnit * units).toInt()} ₡" +
                         if (!canAfford) " — не хватает!" else "",
-                fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Accent,
+                fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Accent,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
-            Spacer(Modifier.height(12.dp))
         }
 
+        Spacer(Modifier.height(8.dp))
         BigActionButton(
             text = "✅ Купить",
             color = Primary,
@@ -124,19 +122,19 @@ private fun SupplierCard(
             androidx.compose.foundation.BorderStroke(2.dp, Primary) else null,
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(supplier.name,
                     Modifier.weight(1f),
-                    fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Text("${supplier.pricePerUnit} ₡/шт.",
-                    fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Primary)
+                    fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Primary)
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(2.dp))
             Text(
                 "Качество: ${"★".repeat(supplier.quality)}${"☆".repeat(5 - supplier.quality)} " +
                         "· Риск брака: ${supplier.risk}",
-                fontSize = 12.sp, color = TextSecondary
+                fontSize = 11.sp, color = TextSecondary
             )
         }
     }

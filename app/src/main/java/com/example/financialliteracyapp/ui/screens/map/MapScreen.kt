@@ -1,117 +1,134 @@
 package com.example.financialliteracyapp.ui.screens.map
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.border
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.financialliteracyapp.data.AppContainer
-import com.example.financialliteracyapp.data.local.entity.BotEntity
+import com.example.financialliteracyapp.data.local.entity.BuildingEntity
 import com.example.financialliteracyapp.ui.theme.Primary
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.math.abs
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.roundToInt
-import kotlin.math.sin
-import kotlin.math.sqrt
 
+/** Район на карте города. Кликабельны: ДОМ, свои магазины, зелёные «продаётся». */
 data class Plot(
-    val emoji: String,
+    val id: String,
+    val emoji: String = "",
     val isForSale: Boolean = false,
-    val label: String? = null,
+    val isHome: Boolean = false,
     val isComplex: Boolean = false,
-    val miniGrid: List<String>? = null
+    val miniGrid: List<String>? = null,
+    val buildingType: String? = null   // если на этом участке стоит магазин игрока
 )
 
+/** Эмодзи магазина игрока по типу здания. */
+private fun buildingEmoji(type: String) = when (type) {
+    "PRODUCTS" -> "🛒"
+    "CONSTRUCTION" -> "🔧"
+    "AUTO_SERVICE" -> "🚗"
+    else -> "🏪"
+}
+
+/** Название магазина игрока по типу здания. */
+private fun buildingName(type: String) = when (type) {
+    "PRODUCTS" -> "Ларёк"
+    "CONSTRUCTION" -> "Стройматериалы"
+    "AUTO_SERVICE" -> "СТО"
+    else -> "Магазин"
+}
+
+/** Визуал построенного магазина: 0=Ларёк, 1=Стройка, 2=СТО (согласовано с LotScreen). */
+private fun lotEmoji(type: Int) = when (type) {
+    0 -> "🛒"
+    1 -> "🔧"
+    else -> "🚗"
+}
+
+private fun lotName(type: Int) = when (type) {
+    0 -> "Ларёк"
+    1 -> "Стройка"
+    else -> "СТО"
+}
+
+/** Карта района «Рынок»: ДОМ, 3 магазина игрока, свободные (серые) и продающиеся участки. */
 private val cityMap = listOf(
     // Row 1
-    Plot("🏠", label = "ДОМ"),
-    Plot("", isForSale = true),
-    Plot("", isForSale = true),
-    // Row 2
-    Plot("🏢"),
-    Plot("", isComplex = true, miniGrid = listOf("🏠", "🏠", "🏠", "🏠"), label = "🏪"),
-    Plot("🏭"),
+    Plot(id = "h1", emoji = "🏠", isHome = true),
+    Plot(id = "s1", isForSale = true),
+    Plot(id = "s2", isForSale = true),
+    // Row 2 — магазины игрока в этом районе
+    Plot(id = "b1", buildingType = "AUTO_SERVICE"),
+    Plot(id = "b2", isComplex = true, miniGrid = listOf("🏠", "🏠", "🏠", "🏠"), buildingType = "PRODUCTS"),
+    Plot(id = "b3", buildingType = "CONSTRUCTION"),
     // Row 3
-    Plot("🌳"),
-    Plot("", isForSale = true),
-    Plot("🏢"),
+    Plot(id = "g1", emoji = "🌳"),
+    Plot(id = "s3", isForSale = true),
+    Plot(id = "g2", emoji = "🏢"),
     // Row 4
-    Plot("", isForSale = true),
-    Plot("🏠"),
-    Plot("🌳"),
+    Plot(id = "s4", isForSale = true),
+    Plot(id = "g3", emoji = "🏠"),
+    Plot(id = "g4", emoji = "🌳"),
     // Row 5
-    Plot("🏢"),
-    Plot("", isForSale = true),
-    Plot("", isForSale = true),
+    Plot(id = "g5", emoji = "🏢"),
+    Plot(id = "s5", isForSale = true),
+    Plot(id = "s6", isForSale = true),
     // Row 6
-    Plot("", isForSale = true),
-    Plot("🏭"),
-    Plot("🌳"),
+    Plot(id = "s7", isForSale = true),
+    Plot(id = "g6", emoji = "🏭"),
+    Plot(id = "g7", emoji = "🌳"),
     // Row 7
-    Plot("🏠"),
-    Plot("", isForSale = true),
-    Plot("🏢"),
+    Plot(id = "g8", emoji = "🏠"),
+    Plot(id = "s8", isForSale = true),
+    Plot(id = "g9", emoji = "🏢"),
     // Row 8
-    Plot("", isForSale = true),
-    Plot("🌳"),
-    Plot("", isForSale = true),
+    Plot(id = "s9", isForSale = true),
+    Plot(id = "g10", emoji = "🌳"),
+    Plot(id = "s10", isForSale = true),
     // Row 9
-    Plot("🏢"),
-    Plot("", isForSale = true),
-    Plot("🏠"),
+    Plot(id = "g11", emoji = "🏢"),
+    Plot(id = "s11", isForSale = true),
+    Plot(id = "g12", emoji = "🏠"),
     // Row 10
-    Plot("", isForSale = true),
-    Plot("🏭"),
-    Plot("", isForSale = true),
+    Plot(id = "s12", isForSale = true),
+    Plot(id = "g13", emoji = "🏭"),
+    Plot(id = "s13", isForSale = true),
     // Row 11
-    Plot("🌳"),
-    Plot("", isForSale = true),
-    Plot("🏢"),
+    Plot(id = "g14", emoji = "🌳"),
+    Plot(id = "s14", isForSale = true),
+    Plot(id = "g15", emoji = "🏢"),
     // Row 12
-    Plot("", isForSale = true),
-    Plot("🏠"),
-    Plot("", isForSale = true),
+    Plot(id = "s15", isForSale = true),
+    Plot(id = "g16", emoji = "🏠"),
+    Plot(id = "s16", isForSale = true),
 )
 
 @Composable
 fun MapScreen(
     onGoHome: () -> Unit,
-    onOpenBuilding: (Long) -> Unit
+    onOpenBuilding: (Long) -> Unit,
+    onOpenLot: (String) -> Unit
 ) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
-    val scope = rememberCoroutineScope()
+    val prefs = remember { AppContainer.prefs(context) }
 
-    val wallet by repo.observeWallet().collectAsState(initial = null)
-    val cash = wallet?.cash ?: 500
-
-    // Real buildings from DB — used to map plot taps to buildings
-    val buildings by repo.observeBuildings().collectAsState(initial = emptyList())
-    fun buildingIdFor(type: String): Long? =
-        buildings.firstOrNull { it.type == type }?.id
+    /// Real buildings of the player from DB
+    val buildings: List<BuildingEntity> by repo.observeBuildings().collectAsState(initial = emptyList())
+    val lotPurchased by prefs.lotPurchased.collectAsState(initial = false)
+    val lotType by prefs.lotType.collectAsState(initial = 0)
+    val lotPlotId by prefs.lotPlotId.collectAsState(initial = "")
 
     Column(
         modifier = Modifier
@@ -126,18 +143,11 @@ fun MapScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                "Дата 01.01.2020 12:00",
+                "Карта района — Рынок",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black
             )
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Text("нужное  \\  желаемое  \\  копилка", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                Text("100  \\  200  \\  200", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-            }
         }
 
         // Map — LazyVerticalGrid scrolls itself (no nested verticalScroll: causes crash)
@@ -156,12 +166,27 @@ fun MapScreen(
                 contentPadding = PaddingValues(10.dp)
             ) {
                 items(cityMap) { plot ->
-                    val targetId = when {
-                        plot.label == "🏪" -> buildingIdFor("PRODUCTS")
-                        plot.emoji == "🛒" -> buildingIdFor("PRODUCTS")
-                        else -> buildingIdFor("PRODUCTS")
+                    // ===== Правила кликабельности =====
+                    val ownedBuilding = plot.buildingType?.let { bt ->
+                        buildings.firstOrNull { it.type == bt }
                     }
-                    PlotItem(plot = plot, onClick = { targetId?.let(onOpenBuilding) })
+                    val purchasedHere = plot.isForSale && lotPurchased && lotPlotId == plot.id
+
+                    val onClick: (() -> Unit)? = when {
+                        plot.isHome -> onGoHome
+                        ownedBuilding != null -> ({ onOpenBuilding(ownedBuilding.id) })
+                        purchasedHere -> ({ onOpenLot(plot.id) })
+                        plot.isForSale -> ({ onOpenLot(plot.id) })
+                        else -> null   // серый район / нет магазина — не кликабелен
+                    }
+
+                    PlotItem(
+                        plot = plot,
+                        ownedBuilding = ownedBuilding,
+                        purchasedHere = purchasedHere,
+                        lotType = lotType,
+                        onClick = onClick
+                    )
                 }
             }
         }
@@ -171,22 +196,30 @@ fun MapScreen(
 @Composable
 private fun PlotItem(
     plot: Plot,
-    onClick: () -> Unit
+    ownedBuilding: BuildingEntity?,
+    purchasedHere: Boolean,
+    lotType: Int,
+    onClick: (() -> Unit)?
 ) {
+    val clickableModifier = if (onClick != null) Modifier.clickable(onClick = onClick!!) else Modifier
+
     val isForSale = plot.isForSale
     val isComplex = plot.isComplex
     val miniGrid = plot.miniGrid
-    val label = plot.label
 
+    // Магазин игрока на этом участке (своё здание или купленный участок)
+    val storeEmoji = ownedBuilding?.let { buildingEmoji(it.type) } ?: if (purchasedHere) lotEmoji(lotType) else null
+    val storeName = ownedBuilding?.let { buildingName(it.type) } ?: if (purchasedHere) lotName(lotType) else null
+
+    // == Сложный участок с мини-сеткой жилого двора + магазином игрока ==
     if (isComplex && miniGrid != null) {
-        // Complex plot with mini grid + shop
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
                 .background(Color.White)
                 .border(width = 2.dp, color = Color(0xFF555555))
-                .clickable(onClick = onClick)
+                .then(clickableModifier)
         ) {
             Column(
                 modifier = Modifier.fillMaxSize(),
@@ -212,7 +245,7 @@ private fun PlotItem(
                         }
                     }
                 }
-                // Shop emoji
+                // Магазин игрока
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -221,12 +254,65 @@ private fun PlotItem(
                         .padding(horizontal = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(label ?: "🏪", fontSize = 26.sp)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(storeEmoji ?: "🏪", fontSize = 20.sp)
+                        storeName?.let {
+                            Text(it, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("куплено", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color(0xFF81C784))
+                        }
+                    }
                 }
             }
         }
-    } else if (isForSale) {
-        // For sale plot
+        return
+    }
+
+    // == Участок с магазином игрока (своё здание) ==
+    if (ownedBuilding != null || purchasedHere) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .background(Color(0xFFFFF9C4))
+                .border(width = 2.dp, color = if (ownedBuilding != null) Primary else Color(0xFF2E7D32))
+                .then(clickableModifier),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(storeEmoji ?: "🏪", fontSize = 32.sp)
+                storeName?.let {
+                    Text(it, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.Center)
+                    Text("куплено", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
+                }
+            }
+        }
+        return
+    }
+
+    // == ДОМ — всегда кликабелен, возвращает на сцену дома ==
+    if (plot.isHome) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .background(Color.White)
+                .border(width = 2.dp, color = Color(0xFF555555))
+                .clickable(onClick = onClick!!),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("🏠", fontSize = 32.sp)
+                Text("ДОМ", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+            }
+        }
+        return
+    }
+
+    // == Участок продаётся — зелёный, кликабелен → сцена покупки ==
+    if (isForSale && onClick != null) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -236,46 +322,22 @@ private fun PlotItem(
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
-            Text("продается", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
-        }
-    } else if (label != null) {
-        // Plot with label (HOME)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .background(Color.White)
-                .border(width = 2.dp, color = Color(0xFF555555))
-                .clickable(onClick = onClick)
-        ) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Top
-            ) {
-                Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(top = 4.dp, start = 6.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(plot.emoji, fontSize = 32.sp)
-                }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("продается", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
             }
         }
-    } else {
-        // Regular plot with emoji
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .background(Color(0xFFE0E0E0))
-                .border(width = 2.dp, color = Color(0xFF555555))
-                .clickable(onClick = onClick),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(plot.emoji, fontSize = 32.sp)
-        }
+        return
+    }
+
+    // == Остальное (серые, занятые) — НЕ кликабельно ==
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .background(Color(0xFFE0E0E0))
+            .border(width = 2.dp, color = Color(0xFF555555)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(if (plot.emoji.isEmpty()) "·" else plot.emoji, fontSize = 32.sp)
     }
 }

@@ -28,6 +28,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import com.example.financialliteracyapp.data.AppContainer
+import com.example.financialliteracyapp.data.local.entity.BuildingEntity
 import com.example.financialliteracyapp.ui.components.NavSidebar
 import com.example.financialliteracyapp.ui.screens.adult.AdultScreen
 import com.example.financialliteracyapp.ui.screens.banks.BankScreen
@@ -52,15 +53,12 @@ import com.example.financialliteracyapp.ui.screens.reference.ReferenceScreen
 import com.example.financialliteracyapp.ui.screens.report.ReportScreen
 import com.example.financialliteracyapp.ui.screens.shop.AccountingScreen
 
-/** Полноэкранные экраны без боковой панели: онбординг и мини-игры. */
+/** Полноэкранные экраны без боковой панели: онбординг и чистые мини-игры. */
 private val HIDDEN_BAR_ROUTES = setOf(
     Routes.ONBOARDING,
-    Routes.SHELVES,
-    Routes.SUPPLIERS,
     Routes.PRICER,
-    Routes.CASHIER,
-    Routes.CLEANING,
-    Routes.HIRE
+    Routes.SHELVES,
+    Routes.CLEANING
 )
 
 @Composable
@@ -132,11 +130,17 @@ fun AppNavGraph(
             composable(Routes.MAP) {
                 MapScreen(
                     onGoHome = { navController.navigate(Routes.MAIN) },
-                    onOpenBuilding = { id -> navController.navigate("${Routes.BUILDING}/$id") }
+                    onOpenBuilding = { id -> navController.navigate("${Routes.BUILDING}/$id") },
+                    onOpenLot = { plotId -> navController.navigate("${Routes.LOT}/$plotId") }
                 )
             }
-            composable(Routes.LOT) {
+            composable(
+                route = "${Routes.LOT}/{plotId}",
+                arguments = listOf(navArgument("plotId") { type = NavType.StringType; defaultValue = "" })
+            ) { backStackEntry ->
+                val plotId = backStackEntry.arguments?.getString("plotId") ?: ""
                 LotScreen(
+                    plotId = plotId,
                     onBack = { navController.popBackStack() },
                     onBuildingBuilt = { navController.popBackStack() }
                 )
@@ -145,7 +149,7 @@ fun AppNavGraph(
             composable(Routes.KIOSK) {
                 val ctx = LocalContext.current
                 val kRepo = remember { AppContainer.repo(ctx) }
-                val kBuildings by kRepo.observeBuildingsByDistrict("Рынок").collectAsState(initial = emptyList())
+                val kBuildings: List<BuildingEntity> by kRepo.observeBuildingsByDistrict("Рынок").collectAsState(initial = emptyList())
                 val kBuilding = kBuildings.firstOrNull { it.type == "PRODUCTS" }
                 if (kBuilding != null) {
                     ProductsInteriorScreen(
@@ -165,7 +169,7 @@ fun AppNavGraph(
                 val buildingId = backStackEntry.arguments?.getLong("buildingId") ?: 0L
                 val context = LocalContext.current
                 val repo = remember { AppContainer.repo(context) }
-                val buildings by repo.observeBuildingsByDistrict("Рынок").collectAsState(initial = emptyList())
+                val buildings: List<BuildingEntity> by repo.observeBuildingsByDistrict("Рынок").collectAsState(initial = emptyList())
                 val building = buildings.firstOrNull { it.id == buildingId }
 
                 val buildingType = building?.type ?: "PRODUCTS"
@@ -258,7 +262,7 @@ fun AppNavGraph(
             composable(Routes.CONSTRUCTION) {
                 val context = LocalContext.current
                 val repo = remember { AppContainer.repo(context) }
-                val buildings by repo.observeBuildingsByDistrict("Рынок").collectAsState(initial = emptyList())
+                val buildings: List<BuildingEntity> by repo.observeBuildingsByDistrict("Рынок").collectAsState(initial = emptyList())
                 val building = buildings.firstOrNull { it.type == "CONSTRUCTION" }
                 if (building != null) {
                     ConstructionInteriorScreen(
@@ -273,7 +277,7 @@ fun AppNavGraph(
             composable(Routes.AUTO_SERVICE) {
                 val context = LocalContext.current
                 val repo = remember { AppContainer.repo(context) }
-                val buildings by repo.observeBuildingsByDistrict("Рынок").collectAsState(initial = emptyList())
+                val buildings: List<BuildingEntity> by repo.observeBuildingsByDistrict("Рынок").collectAsState(initial = emptyList())
                 val building = buildings.firstOrNull { it.type == "AUTO_SERVICE" }
                 if (building != null) {
                     AutoServiceInteriorScreen(
