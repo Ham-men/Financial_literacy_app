@@ -3,23 +3,28 @@ package com.example.financialliteracyapp.ui.screens.main
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.border
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.financialliteracyapp.data.AppContainer
 import com.example.financialliteracyapp.ui.components.Chip
 import com.example.financialliteracyapp.ui.components.StatBar
 import com.example.financialliteracyapp.ui.theme.*
-import androidx.compose.ui.graphics.Color
+import com.example.financialliteracyapp.ui.navigation.Routes
+import kotlinx.coroutines.launch
 
 @Composable
 fun MainScreen(
@@ -54,8 +59,10 @@ fun MainScreen(
     }
 
     val cash = wallet?.cash ?: 500
-    val saveFact = wallet?.saveFact ?: 0
-    
+    val needPlan = wallet?.needPlan ?: 0
+    val wantPlan = wallet?.wantPlan ?: 0
+    val savePlan = wallet?.savePlan ?: 0
+
     // Эмодзи Финни по состоянию
     val petEmoji = when {
         hunger < 30 -> "😿"
@@ -64,29 +71,6 @@ fun MainScreen(
         hunger < 60 || mood < 60 -> "🦝"
         else -> "😺"
     }
-    
-    // Прогресс цели
-    val goalProgress = currentGoal?.let { 
-        if (it.targetAmount > 0) (it.currentAmount.toFloat() / it.targetAmount).coerceIn(0f, 1f) else 0f 
-    } ?: 0f
-    val goalTitle = currentGoal?.title ?: "Мячик для Финни"
-    val goalCurrent = currentGoal?.currentAmount ?: 0
-    val goalTarget = currentGoal?.targetAmount ?: 300
-    
-    // Активное задание
-    val questTitle = activeQuest?.title ?: "Нет активного задания"
-    val questReward = activeQuest?.reward ?: 0
-    val questProgress = activeQuest?.let { 
-        if (it.target > 0) (it.progress.toFloat() / it.target).coerceIn(0f, 1f) else 0f 
-    } ?: 0f
-    val questTopicLabel = activeQuest?.let { 
-        when (it.topic) {
-            "PLANNING" -> "Планирование"
-            "SAVING" -> "Сбережения"
-            "SPENDING" -> "Покупки"
-            else -> it.topic
-        }
-    } ?: ""
 
     var showMenu by remember { mutableStateOf(false) }
 
@@ -94,151 +78,123 @@ fun MainScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        // Верхняя панель: Финни + уровень + кэш + меню настроек
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(petName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("День $currentDay · $stageLabel", fontSize = 12.sp, color = TextSecondary)
-            }
-            Chip("Ур. $level")
-            Spacer(Modifier.width(8.dp))
-            Chip("💰 $cash ₡")
-            Spacer(Modifier.width(4.dp))
-            Box {
-                IconButton(onClick = { showMenu = true }) {
-                    Text("⚙️", fontSize = 22.sp)
-                }
-                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                    DropdownMenuItem(text = { Text("📈 Мой прогресс") }, onClick = { showMenu = false; onOpenProgress() })
-                    DropdownMenuItem(text = { Text("📖 Справочник") }, onClick = { showMenu = false; onOpenReference() })
-                    DropdownMenuItem(text = { Text("👨‍👩‍👧 Взрослым") }, onClick = { showMenu = false; onOpenAdult() })
-                }
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        // Прогресс-бар дня (демо: 5 периодов)
-        LinearProgressIndicator(
-            progress = { (currentDay / 5f).coerceIn(0f, 1f) },
-            color = Primary,
-            modifier = Modifier.fillMaxWidth().height(6.dp)
-        )
-        
-        Spacer(Modifier.height(16.dp))
-        
-        // Финни (крупно)
-        Text(
-            text = petEmoji,
-            fontSize = 120.sp,
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        )
-        
-        Spacer(Modifier.height(16.dp))
-        
-        // Шкалы
-        StatBar("🍖 Сытость", hunger, Hunger)
-        StatBar("😊 Настроение", mood, Mood)
-        StatBar("⚡ Бодрость", energy, Energy)
-        
-        Spacer(Modifier.height(16.dp))
-        
-        // Копилка + цель
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            // Копилка
-            Surface(
-                modifier = Modifier.weight(1f).padding(bottom = 8.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = Primary.copy(alpha = 0.1f)
-            ) {
-                Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("🐷 Копилка", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Primary)
-                    Text("$saveFact ₡", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Primary)
-                    Text("на цель", fontSize = 12.sp, color = TextSecondary)
-                }
-            }
-            
-            // Цель
-            Surface(
-                modifier = Modifier.weight(1f).padding(bottom = 8.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = Color(0xFF4CAF50).copy(alpha = 0.1f)
-            ) {
-                Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("🎯 $goalTitle", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4CAF50))
-                    LinearProgressIndicator(
-                        progress = { goalProgress },
-                        color = Color(0xFF4CAF50),
-                        modifier = Modifier.fillMaxWidth().height(8.dp)
-                    )
-                    Text("$goalCurrent / $goalTarget ₡", fontSize = 12.sp, color = TextSecondary)
-                }
-            }
-        }
-        
-        Spacer(Modifier.height(16.dp))
-        
-        // Активное задание
-        Surface(
+        // Top row: Date/Time left, Stats right
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            color = Color(0xFF2196F3).copy(alpha = 0.1f)
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
         ) {
-            Column(Modifier.padding(16.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("📋 Задание: $questTitle", Modifier.weight(1f), fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    Text("+$questReward ₡", fontWeight = FontWeight.Bold, color = Accent, fontSize = 14.sp)
-                }
-                Text(questTopicLabel, fontSize = 12.sp, color = TextSecondary)
+            Text(
+                "Дата 01.01.2020  12:00",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text("нужное  \\  желаемое  \\  копилка", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text("$needPlan  \\  $wantPlan  \\  $savePlan", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                 Spacer(Modifier.height(4.dp))
-                LinearProgressIndicator(
-                    progress = { questProgress },
-                    color = Color(0xFF2196F3),
-                    modifier = Modifier.fillMaxWidth().height(8.dp)
-                )
-                Text("${activeQuest?.progress ?: 0} / ${activeQuest?.target ?: 1}", fontSize = 12.sp, color = TextSecondary)
+                Text("параметры", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text("сытость  $hunger", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text("настроение  $mood", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text("бодрость  $energy", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
             }
         }
-        
-        Spacer(Modifier.height(24.dp))
-        
-        // Компактные входы: Мир и Мой ларёк (остальное — в меню ⚙️)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            QuickTile("🗺️", "Мир", Color(0xFF26A69A), Modifier.weight(1f)) { onOpenMap() }
-            QuickTile("🍋", "Мой ларёк", Color(0xFFEF6C00), Modifier.weight(1f)) { onOpenKiosk() }
-        }
-        
-        Spacer(Modifier.height(24.dp))
-    }
-}
 
-/** Маленькая плитка-кнопка в ряд. */
-@Composable
-private fun QuickTile(
-    icon: String,
-    label: String,
-    color: Color,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = modifier
-            .height(72.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(14.dp),
-        color = color.copy(alpha = 0.12f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.35f)),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+        Spacer(Modifier.height(16.dp))
+
+        // Window at top center
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
         ) {
-            Text(icon, fontSize = 20.sp)
-            Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = color)
+            Box(
+                modifier = Modifier
+                    .width(120.dp)
+                    .height(120.dp)
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(Color(0xFF87CEEB), Color(0xFF7CFC00)),
+                            start = Offset.Zero,
+                            end = Offset(0f, 120f)
+                        )
+                    )
+                    .border(width = 4.dp, color = Color(0xFF6B4C3A), shape = RoundedCornerShape(4.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("🪟", fontSize = 48.sp)
+            }
         }
+
+        Spacer(Modifier.height(24.dp))
+
+        // Cat on rug - left side, Bed right side - more centered
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Cat area left
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Rug
+                Box(
+                    modifier = Modifier
+                        .width(140.dp)
+                        .height(50.dp)
+                        .background(Color(0xFF5C3A21))
+                        .clip(RoundedCornerShape(50.dp))
+                        .border(width = 3.dp, color = Color(0xFFD2B48C))
+                )
+                // Cat on rug
+                Box(
+                    modifier = Modifier
+                        .width(55.dp)
+                        .height(55.dp)
+                        .background(Color.Black)
+                        .padding(6.dp)
+                        .offset(y = (-35).dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("🐱", fontSize = 38.sp)
+                }
+            }
+
+            // Bed right side
+            Text("🛏️", fontSize = 60.sp, modifier = Modifier
+                .graphicsLayer { rotationZ = -5f }
+            )
+        }
+
+        Spacer(Modifier.height(32.dp))
+
+        // Feed button at bottom center - use Box with contentAlignment
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp).padding(bottom = 16.dp),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Button(
+                onClick = { /* TODO: feed action */ },
+                modifier = Modifier
+                    .height(48.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFF9800),
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text("🍖 Покормить Финни", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
     }
 }

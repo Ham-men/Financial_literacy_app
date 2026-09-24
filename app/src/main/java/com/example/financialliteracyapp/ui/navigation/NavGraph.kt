@@ -3,8 +3,10 @@ package com.example.financialliteracyapp.ui.navigation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -17,6 +19,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -24,14 +28,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import com.example.financialliteracyapp.data.AppContainer
-import com.example.financialliteracyapp.ui.components.HeaderBar
+import com.example.financialliteracyapp.ui.components.NavSidebar
 import com.example.financialliteracyapp.ui.screens.adult.AdultScreen
 import com.example.financialliteracyapp.ui.screens.banks.BankScreen
-import com.example.financialliteracyapp.ui.screens.autoservice.AutoServiceScreen
+import com.example.financialliteracyapp.ui.screens.building.AutoServiceInteriorScreen
 import com.example.financialliteracyapp.ui.screens.building.BuildingCashierScreen
-import com.example.financialliteracyapp.ui.screens.building.BuildingInteriorScreen
 import com.example.financialliteracyapp.ui.screens.building.CleaningGameScreen
-import com.example.financialliteracyapp.ui.screens.construction.ConstructionScreen
+import com.example.financialliteracyapp.ui.screens.building.ConstructionInteriorScreen
+import com.example.financialliteracyapp.ui.screens.building.ProductsInteriorScreen
 import com.example.financialliteracyapp.ui.screens.food.FoodScreen
 import com.example.financialliteracyapp.ui.screens.goals.GoalHubScreen
 import com.example.financialliteracyapp.ui.screens.kiosk.HireScreen
@@ -48,20 +52,15 @@ import com.example.financialliteracyapp.ui.screens.reference.ReferenceScreen
 import com.example.financialliteracyapp.ui.screens.report.ReportScreen
 import com.example.financialliteracyapp.ui.screens.shop.AccountingScreen
 
-/** Экран без боковой панели: онбординг, карта и полноэкранные мини-игры. */
+/** Полноэкранные экраны без боковой панели: онбординг и мини-игры. */
 private val HIDDEN_BAR_ROUTES = setOf(
     Routes.ONBOARDING,
-    Routes.MAP,
-    Routes.BUILDING,
     Routes.SHELVES,
     Routes.SUPPLIERS,
     Routes.PRICER,
     Routes.CASHIER,
     Routes.CLEANING,
-    Routes.HIRE,
-    Routes.FOOD,
-    Routes.CONSTRUCTION,
-    Routes.AUTO_SERVICE
+    Routes.HIRE
 )
 
 @Composable
@@ -92,21 +91,24 @@ fun AppNavGraph(
     val currentRoute = backStackEntry?.destination?.route
     val showBar = currentRoute != null && currentRoute !in HIDDEN_BAR_ROUTES
 
-    // Используем Row: слева HeaderBar, справа контент
     Row(Modifier.fillMaxSize()) {
-        // Левая навигация — всегда сверху, не перекрывается
+        // Left navigation sidebar - always visible on main screens
         if (showBar) {
-            HeaderBar(
+            NavSidebar(
                 currentRoute = currentRoute,
-                onNavigate = { route -> navigateToTab(navController, route) }
+                onNavigate = { route ->
+                    navigateToTab(navController, route)
+                }
             )
         }
 
-        // Основной контент — NavHost занимает оставшееся место
+        // Main content area
         NavHost(
             navController = navController,
             startDestination = start,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = if (showBar) 70.dp else 0.dp)
         ) {
             composable(Routes.ONBOARDING) {
                 OnboardingScreen(onFinish = {
@@ -139,34 +141,65 @@ fun AppNavGraph(
                     onBuildingBuilt = { navController.popBackStack() }
                 )
             }
+            // Kiosk - the "ЛАРЁК" tab now opens the products building interior (СТО-style scene)
             composable(Routes.KIOSK) {
-                KioskScreen(
-                    onBack = { navController.navigate(Routes.MAIN) },
-                    onOpenReport = {
-                        navController.navigate(Routes.REPORT) {
-                            popUpTo(Routes.KIOSK) { inclusive = false }
-                        }
-                    },
-                    onOpenShelves = { navController.navigate(Routes.SHELVES) }
-                )
+                val ctx = LocalContext.current
+                val kRepo = remember { AppContainer.repo(ctx) }
+                val kBuildings by kRepo.observeBuildingsByDistrict("Рынок").collectAsState(initial = emptyList())
+                val kBuilding = kBuildings.firstOrNull { it.type == "PRODUCTS" }
+                if (kBuilding != null) {
+                    ProductsInteriorScreen(
+                        buildingId = kBuilding.id,
+                        onExit = { navController.navigate(Routes.MAIN) },
+                        onOpenSuppliers = { navController.navigate(Routes.SUPPLIERS) },
+                        onOpenCashier = { navController.navigate("${Routes.CASHIER}/${kBuilding.id}") },
+                        onOpenHire = { navController.navigate(Routes.HIRE) }
+                    )
+                }
             }
+            // Building interior - routes to specialized screens based on building type
             composable(
                 route = "${Routes.BUILDING}/{buildingId}",
                 arguments = listOf(navArgument("buildingId") { type = NavType.LongType })
             ) { backStackEntry ->
                 val buildingId = backStackEntry.arguments?.getLong("buildingId") ?: 0L
-                BuildingInteriorScreen(
-                    buildingId = buildingId,
-                    onExit = { navController.popBackStack() },
-                    onOpenSuppliers = { navController.navigate(Routes.SUPPLIERS) },
-                    onOpenShelves = { navController.navigate(Routes.SHELVES) },
-                    onOpenPricer = { navController.navigate(Routes.PRICER) },
-                    onOpenCashier = { navController.navigate("${Routes.CASHIER}/$buildingId") },
-                    onOpenCleaning = { navController.navigate("${Routes.CLEANING}/$buildingId") },
-                    onOpenHire = { navController.navigate(Routes.HIRE) },
-                    onOpenUpgrades = { navController.popBackStack() },
-                    onOpenAccounting = { navController.navigate(Routes.SHOP) }
-                )
+                val context = LocalContext.current
+                val repo = remember { AppContainer.repo(context) }
+                val buildings by repo.observeBuildingsByDistrict("Рынок").collectAsState(initial = emptyList())
+                val building = buildings.firstOrNull { it.id == buildingId }
+
+                val buildingType = building?.type ?: "PRODUCTS"
+
+                when (buildingType) {
+                    "PRODUCTS" -> ProductsInteriorScreen(
+                        buildingId = buildingId,
+                        onExit = { navController.popBackStack() },
+                        onOpenSuppliers = { navController.navigate(Routes.SUPPLIERS) },
+                        onOpenCashier = { navController.navigate("${Routes.CASHIER}/$buildingId") },
+                        onOpenHire = { navController.navigate(Routes.HIRE) }
+                    )
+                    "CONSTRUCTION" -> ConstructionInteriorScreen(
+                        buildingId = buildingId,
+                        onExit = { navController.popBackStack() },
+                        onOpenSuppliers = { navController.navigate(Routes.SUPPLIERS) },
+                        onOpenCashier = { navController.navigate("${Routes.CASHIER}/$buildingId") },
+                        onOpenHire = { navController.navigate(Routes.HIRE) }
+                    )
+                    "AUTO_SERVICE" -> AutoServiceInteriorScreen(
+                        buildingId = buildingId,
+                        onExit = { navController.popBackStack() },
+                        onOpenSuppliers = { navController.navigate(Routes.SUPPLIERS) },
+                        onOpenCashier = { navController.navigate("${Routes.CASHIER}/$buildingId") },
+                        onOpenHire = { navController.navigate(Routes.HIRE) }
+                    )
+                    else -> ProductsInteriorScreen(
+                        buildingId = buildingId,
+                        onExit = { navController.popBackStack() },
+                        onOpenSuppliers = { navController.navigate(Routes.SUPPLIERS) },
+                        onOpenCashier = { navController.navigate("${Routes.CASHIER}/$buildingId") },
+                        onOpenHire = { navController.navigate(Routes.HIRE) }
+                    )
+                }
             }
             composable(Routes.SUPPLIERS) {
                 SuppliersGame(onFinish = { navController.popBackStack() })
@@ -223,10 +256,34 @@ fun AppNavGraph(
                 FoodScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.CONSTRUCTION) {
-                ConstructionScreen(onBack = { navController.popBackStack() })
+                val context = LocalContext.current
+                val repo = remember { AppContainer.repo(context) }
+                val buildings by repo.observeBuildingsByDistrict("Рынок").collectAsState(initial = emptyList())
+                val building = buildings.firstOrNull { it.type == "CONSTRUCTION" }
+                if (building != null) {
+                    ConstructionInteriorScreen(
+                        buildingId = building.id,
+                        onExit = { navController.popBackStack() },
+                        onOpenSuppliers = { navController.navigate(Routes.SUPPLIERS) },
+                        onOpenCashier = { navController.navigate("${Routes.CASHIER}/${building.id}") },
+                        onOpenHire = { navController.navigate(Routes.HIRE) }
+                    )
+                }
             }
             composable(Routes.AUTO_SERVICE) {
-                AutoServiceScreen(onBack = { navController.popBackStack() })
+                val context = LocalContext.current
+                val repo = remember { AppContainer.repo(context) }
+                val buildings by repo.observeBuildingsByDistrict("Рынок").collectAsState(initial = emptyList())
+                val building = buildings.firstOrNull { it.type == "AUTO_SERVICE" }
+                if (building != null) {
+                    AutoServiceInteriorScreen(
+                        buildingId = building.id,
+                        onExit = { navController.popBackStack() },
+                        onOpenSuppliers = { navController.navigate(Routes.SUPPLIERS) },
+                        onOpenCashier = { navController.navigate("${Routes.CASHIER}/${building.id}") },
+                        onOpenHire = { navController.navigate(Routes.HIRE) }
+                    )
+                }
             }
         }
     }

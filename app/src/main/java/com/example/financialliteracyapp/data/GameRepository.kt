@@ -78,7 +78,7 @@ class GameRepository(private val db: AppDatabase) {
             db.walletDao().upsert(WalletEntity())
         }
         if (db.buildingDao().observeAll().first().isEmpty()) {
-            // Стартовые здания на районе Рынок: «Продукты» и «СТО»
+            // Стартовые здания на районе Рынок: «Продукты», «СТО», «Стройматериалы»
             db.buildingDao().upsert(
                 BuildingEntity(
                     type = "PRODUCTS",
@@ -105,6 +105,37 @@ class GameRepository(private val db: AppDatabase) {
                     dirtLevel = 10
                 )
             )
+            db.buildingDao().upsert(
+                BuildingEntity(
+                    type = "CONSTRUCTION",
+                    district = "Рынок",
+                    x = 9, y = 10,
+                    level = 1,
+                    stock = 40,
+                    price = 15,
+                    costPrice = 6,
+                    cash = 150,
+                    dirtLevel = 20
+                )
+            )
+        } else {
+            // Миграция: добавляем здание Стройматериалы, если его ещё нет в старой БД
+            val existing = db.buildingDao().observeAll().first()
+            if (existing.none { it.type == "CONSTRUCTION" }) {
+                db.buildingDao().upsert(
+                    BuildingEntity(
+                        type = "CONSTRUCTION",
+                        district = "Рынок",
+                        x = 9, y = 10,
+                        level = 1,
+                        stock = 40,
+                        price = 15,
+                        costPrice = 6,
+                        cash = 150,
+                        dirtLevel = 20
+                    )
+                )
+            }
         }
         val allBuildings = db.buildingDao().observeAll().first()
         val productsId = allBuildings.firstOrNull { it.type == "PRODUCTS" }?.id ?: -1L
