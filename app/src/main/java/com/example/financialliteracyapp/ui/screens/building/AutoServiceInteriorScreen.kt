@@ -33,10 +33,6 @@ fun AutoServiceInteriorScreen(
     val scope = rememberCoroutineScope()
 
     val wallet by repo.observeWallet().collectAsState(initial = null)
-    val cash = wallet?.cash ?: 500
-    val needPlan = wallet?.needPlan ?: 0
-    val wantPlan = wallet?.wantPlan ?: 0
-    val savePlan = wallet?.savePlan ?: 0
     val building by repo.observeBuildings().collectAsState(initial = emptyList())
     val stock = building.firstOrNull { it.id == buildingId }?.stock ?: 0
 
@@ -46,27 +42,6 @@ fun AutoServiceInteriorScreen(
             .background(Color.White)
             .padding(16.dp)
     ) {
-        // Header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
-            Text(
-                "Дата 01.01.2020 12:00",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Text("нужное  \\  желаемое  \\  копилка", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                Text("$needPlan  \\  $wantPlan  \\  $savePlan", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-            }
-        }
-
         // Door at top center
         Box(
             modifier = Modifier
@@ -88,9 +63,9 @@ fun AutoServiceInteriorScreen(
             // Left area - lift bays with stock
             Column(
                 modifier = Modifier
-                    .width(150.dp)
-                    .padding(start = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                    .width(108.dp)
+                    .padding(start = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 LiftBayStock(stock = stock)
                 LiftBayStock(stock = stock)
@@ -101,9 +76,9 @@ fun AutoServiceInteriorScreen(
             // Right area - workers and labels
             Column(
                 modifier = Modifier
-                    .width(120.dp)
-                    .padding(end = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(64.dp)
+                    .width(92.dp)
+                    .padding(end = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(56.dp)
             ) {
                 WorkerWithLabel(label = "нанять работника")
                 WorkerWithLabel(label = "нанять работника")
@@ -172,37 +147,37 @@ fun AutoServiceInteriorScreen(
 private fun LiftBayStock(stock: Int) {
     Box(
         modifier = Modifier
-            .width(130.dp)
-            .height(110.dp)
+            .width(110.dp)
+            .height(92.dp)
     ) {
         // Lift structure - use nested boxes for borders
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(85.dp)
+                .height(72.dp)
                 .align(Alignment.BottomCenter)
                 .border(
-                    width = 10.dp,
+                    width = 8.dp,
                     color = Color(0xFF007BB5)
                 )
         ) {
             // Car on lift
-            Text("🚙", fontSize = 42.sp, modifier = Modifier
+            Text("🚙", fontSize = 34.sp, modifier = Modifier
                 .align(Alignment.TopCenter)
-                .offset(y = (-38).dp))
+                .offset(y = (-30).dp))
             // Tools
-            Text("🔧🔨", fontSize = 22.sp, modifier = Modifier
+            Text("🔧🔨", fontSize = 18.sp, modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 35.dp))
+                .padding(bottom = 28.dp))
         }
         // Stock label under the bay
         Text(
             "на складе: $stock",
-            fontSize = 10.sp,
+            fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
             color = Color.Black,
             modifier = Modifier
-                .offset(y = 86.dp)
+                .offset(y = 74.dp)
         )
     }
 }
@@ -211,9 +186,9 @@ private fun LiftBayStock(stock: Int) {
 private fun WorkerWithLabel(label: String) {
     Column(
         horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        Text("👨‍🔧", fontSize = 42.sp)
-        Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+        Text("👨‍🔧", fontSize = 34.sp)
+        Text(label, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.Black)
     }
 }

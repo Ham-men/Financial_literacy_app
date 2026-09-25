@@ -37,7 +37,8 @@ fun NavSidebar(
             NavItem(Routes.KIOSK, "🛒", "ЛАРЁК", "Ларёк"),
             NavItem(Routes.CONSTRUCTION, "🔧", "СТРОЙКА", "Стройка"),
             NavItem(Routes.AUTO_SERVICE, "🚗", "СТО", "СТО"),
-            NavItem(Routes.ENTERTAINMENT, "🧸", "ИГРЫ", "Развлечения")
+            NavItem(Routes.ENTERTAINMENT, "🧸", "ИГРЫ", "Развлечения"),
+            NavItem(Routes.CHEATS, "🎁", "ЧИТЫ", "Читы")
         )
     }
 

@@ -311,6 +311,19 @@ class GameRepository(private val db: AppDatabase) {
         )
     }
 
+    /** Чит для теста: прибавить деньги напрямую в банку (карман/желаемое/копилка) без списания с мешка. */
+    suspend fun cheatAddToBank(bank: String, amount: Int) {
+        if (amount <= 0) return
+        val w = db.walletDao().getOnce() ?: return
+        val updated = when (bank) {
+            "NEED" -> w.copy(needPlan = w.needPlan + amount)
+            "WANT" -> w.copy(wantPlan = w.wantPlan + amount)
+            "SAVE" -> w.copy(savePlan = w.savePlan + amount)
+            else -> return
+        }
+        db.walletDao().upsert(updated)
+    }
+
     /** Все доходы идут в мешок (cash). Распределение по банкам — только тут. */
     suspend fun distributeBanks(needPlan: Int, wantPlan: Int, savePlan: Int) {
         val w = db.walletDao().getOnce() ?: WalletEntity()
@@ -598,7 +611,7 @@ class GameRepository(private val db: AppDatabase) {
 
     // --- Участки / купленные магазины (v5: здание = рабочее место + продажа) ---
     /** Покупка магазина на свободном участке: создаём рабочее здание, пассивного дохода нет.
-     *  Оплата из банки «нужное» (вложение в бизнес). */
+     *  Оплата из банки «нужное» (в карман): needPlan → needFact, фолбэк на мешок. */
     suspend fun buyShop(plotId: String, type: String): Boolean {
         if (db.buildingDao().getByPlotId(plotId) != null) return false
         if (!spendFromNeed(Balance.LOT_PRICE)) return false

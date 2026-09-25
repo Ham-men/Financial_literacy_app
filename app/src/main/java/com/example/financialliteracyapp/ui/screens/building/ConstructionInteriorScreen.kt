@@ -44,27 +44,6 @@ fun ConstructionInteriorScreen(
             .background(Color.White)
             .padding(16.dp)
     ) {
-        // Header
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
-            Text(
-                "Дата 01.01.2020 12:00",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Text("нужное  \\  желаемое  \\  копилка", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                Text("100  \\  200  \\  200", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-            }
-        }
-
         // Door at top center
         Box(
             modifier = Modifier
@@ -86,9 +65,9 @@ fun ConstructionInteriorScreen(
             // Left area - tool shelves with stock
             Column(
                 modifier = Modifier
-                    .width(150.dp)
-                    .padding(start = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                    .width(108.dp)
+                    .padding(start = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 ToolShelfBay(stock = stock)
                 ToolShelfBay(stock = stock)
@@ -99,9 +78,9 @@ fun ConstructionInteriorScreen(
             // Right area - workers and labels
             Column(
                 modifier = Modifier
-                    .width(120.dp)
-                    .padding(end = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(64.dp)
+                    .width(92.dp)
+                    .padding(end = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(56.dp)
             ) {
                 WorkerWithLabel(label = "нанять работника")
                 WorkerWithLabel(label = "нанять работника")
@@ -116,7 +95,11 @@ fun ConstructionInteriorScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Buy goods button
+// Buy goods button + stock label to the right
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Button(
                 onClick = onOpenSuppliers,
                 modifier = Modifier
@@ -130,6 +113,13 @@ fun ConstructionInteriorScreen(
             ) {
                 Text("📦 Товар", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
+            Text(
+                "на полках: $stock 🧰",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF6D4C00)
+            )
+        }
 
             // Cashier + hire buttons
             Row(
@@ -171,50 +161,41 @@ fun ConstructionInteriorScreen(
 private fun ToolShelfBay(stock: Int) {
     Box(
         modifier = Modifier
-            .width(130.dp)
-            .height(110.dp)
+            .width(110.dp)
+            .height(92.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(85.dp)
+                .height(72.dp)
                 .align(Alignment.BottomCenter)
                 .background(Color(0xFFA07A55))
-                .border(width = 4.dp, color = Color(0xFF7A5A3A))
-                .padding(6.dp),
+                .border(width = 3.dp, color = Color(0xFF7A5A3A))
+                .padding(4.dp),
             contentAlignment = Alignment.Center
         ) {
             // Tool grid 2x2
             Column(
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("🔧", fontSize = 22.sp)
-                    Text("🪛", fontSize = 22.sp)
+                    Text("🔧", fontSize = 18.sp)
+                    Text("🪛", fontSize = 18.sp)
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("🗜️", fontSize = 22.sp)
-                    Text("🔨", fontSize = 22.sp)
+                    Text("🗜️", fontSize = 18.sp)
+                    Text("🔨", fontSize = 18.sp)
                 }
             }
         }
-        // Stock label under the bay
-        Text(
-            "на полках: $stock",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .offset(y = 86.dp)
-        )
+        // Shelf label moved next to «Товар» button in the bottom controls
     }
 }
 
@@ -222,9 +203,9 @@ private fun ToolShelfBay(stock: Int) {
 private fun WorkerWithLabel(label: String) {
     Column(
         horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        Text("👷", fontSize = 42.sp)
-        Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.Center)
+        Text("👷", fontSize = 34.sp)
+        Text(label, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.Center)
     }
 }

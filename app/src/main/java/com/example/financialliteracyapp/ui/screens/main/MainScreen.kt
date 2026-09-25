@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.border
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,7 +44,6 @@ fun MainScreen(
     val prefs = remember { AppContainer.prefs(context) }
     val vm: MainViewModel = viewModel(factory = MainViewModel.factory(repo, prefs))
 
-    val day by vm.day.collectAsState()
     val gameMinute by vm.gameMinute.collectAsState()
     val sleepMessage by vm.sleepMessage.collectAsState()
 
@@ -87,36 +88,27 @@ fun MainScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        // Top row: Date/Time left, Stats right
+        // Top row: only level + stats (day/banks already shown in TimeBankBar HUD)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Top
         ) {
-            Text(
-                "День $day — ${GameRules.dateForDay(day)}  ${GameRules.timeLabel(gameMinute)}",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
+            Text("уровень  $level ($stageLabel)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
             Column(
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalArrangement = Arrangement.spacedBy(1.dp)
             ) {
-                Text("нужное  \\  желаемое  \\  копилка", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                Text("$needPlan  \\  $wantPlan  \\  $savePlan", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                Spacer(Modifier.height(4.dp))
-                Text("параметры", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                Text("уровень  $level ($stageLabel)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                Text("сытость  $hunger", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                Text("настроение  $mood", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                Text("бодрость  $energy", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text("сытость  $hunger", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text("настроение  $mood", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text("бодрость  $energy", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black)
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(6.dp))
 
         // Window at top center
         Box(
@@ -125,23 +117,23 @@ fun MainScreen(
         ) {
             Box(
                 modifier = Modifier
-                    .width(120.dp)
-                    .height(120.dp)
+                    .width(96.dp)
+                    .height(96.dp)
                     .background(
                         brush = Brush.linearGradient(
                             colors = listOf(Color(0xFF87CEEB), Color(0xFF7CFC00)),
                             start = Offset.Zero,
-                            end = Offset(0f, 120f)
+                            end = Offset(0f, 96f)
                         )
                     )
                     .border(width = 4.dp, color = Color(0xFF6B4C3A), shape = RoundedCornerShape(4.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text("🪟", fontSize = 48.sp)
+                Text("🪟", fontSize = 40.sp)
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(6.dp))
 
         // Cat on rug - left side, Bed right side - more centered
         Row(
@@ -156,8 +148,8 @@ fun MainScreen(
                 // Rug
                 Box(
                     modifier = Modifier
-                        .width(140.dp)
-                        .height(50.dp)
+                        .width(120.dp)
+                        .height(44.dp)
                         .background(Color(0xFF5C3A21))
                         .clip(RoundedCornerShape(50.dp))
                         .border(width = 3.dp, color = Color(0xFFD2B48C))
@@ -165,26 +157,40 @@ fun MainScreen(
                 // Cat on rug
                 Box(
                     modifier = Modifier
-                        .width(55.dp)
-                        .height(55.dp)
+                        .width(50.dp)
+                        .height(50.dp)
                         .background(Color.Black)
                         .padding(6.dp)
-                        .offset(y = (-35).dp),
+                        .offset(y = (-30).dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(petEmoji, fontSize = 38.sp)
+                    Text(petEmoji, fontSize = 32.sp)
                 }
             }
 
-            // Bed right side
+            // Bed right side (not clickable — sleep via button below)
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("🛏️", fontSize = 60.sp, modifier = Modifier
+                Text("🛏️", fontSize = 52.sp, modifier = Modifier
                     .graphicsLayer { rotationZ = -5f }
-                    .clickable { vm.sleep() }
                 )
+                Spacer(Modifier.height(4.dp))
+                Button(
+                    onClick = { vm.sleep() },
+                    enabled = GameRules.canSleep(gameMinute),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF5C6BC0),
+                        contentColor = Color.White,
+                        disabledContainerColor = Color(0xFFC5CAE9),
+                        disabledContentColor = Color(0xFF5C6BC0)
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.height(38.dp)
+                ) {
+                    Text("💤 Спать — новый день", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
                 Text(
-                    if (GameRules.canSleep(gameMinute)) "Лечь спать → новый день" else "Спать: 18:00–23:00",
-                    fontSize = 10.sp,
+                    if (GameRules.canSleep(gameMinute)) "Доступно сейчас" else "Спать: 18:00–23:00",
+                    fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
                     color = if (GameRules.canSleep(gameMinute)) Color(0xFF2E7D32) else TextSecondary,
                     textAlign = TextAlign.Center
@@ -194,10 +200,10 @@ fun MainScreen(
 
         // Сообщение о сне (список_scene)
         sleepMessage?.let { msg ->
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(4.dp))
             Text(
                 msg,
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1565C0),
                 textAlign = TextAlign.Center,
@@ -205,13 +211,13 @@ fun MainScreen(
             )
         }
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(8.dp))
 
         // Feed + Heal buttons at bottom center
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp).padding(bottom = 16.dp),
+                .padding(horizontal = 16.dp).padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -219,7 +225,7 @@ fun MainScreen(
                 onClick = { scope.launch { vm.feed() } },
                 enabled = needAvailable >= Balance.FEED_COST,
                 modifier = Modifier
-                    .height(48.dp)
+                    .height(44.dp)
                     .padding(horizontal = 6.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFFF9800),
@@ -227,14 +233,14 @@ fun MainScreen(
                 ),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("🍖 Покормить — ${Balance.FEED_COST}₡", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("🍖 Покормить — ${Balance.FEED_COST}₡", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
 
             Button(
                 onClick = { scope.launch { vm.heal() } },
                 enabled = needAvailable >= Balance.HEAL_COST,
                 modifier = Modifier
-                    .height(48.dp)
+                    .height(44.dp)
                     .padding(horizontal = 6.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF4CAF50),
@@ -242,10 +248,10 @@ fun MainScreen(
                 ),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("💊 Лечение — ${Balance.HEAL_COST}₡", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("💊 Лечение — ${Balance.HEAL_COST}₡", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(8.dp))
     }
 }

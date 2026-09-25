@@ -34,7 +34,6 @@ import com.example.financialliteracyapp.data.AppContainer
 import com.example.financialliteracyapp.data.clock.GameClock
 import com.example.financialliteracyapp.domain.economy.BotBrain
 import com.example.financialliteracyapp.domain.economy.GameRules
-import com.example.financialliteracyapp.ui.components.AppCard
 import com.example.financialliteracyapp.ui.components.Chip
 import com.example.financialliteracyapp.ui.screens.kiosk.KioskCustomer
 import com.example.financialliteracyapp.ui.theme.*
@@ -113,40 +112,45 @@ fun BuildingCashierScreen(
         }
     }
 
-    // Без внешнего verticalScroll: вложенный scroll + fillMaxSize даёт бесконечную высоту и краш.
     Column(
         Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
-        // Заголовок
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                onClick = onBack,
-                shape = RoundedCornerShape(10.dp),
-                color = MaterialTheme.colorScheme.surface
-            ) {
-                Text("◀", Modifier.padding(horizontal = 10.dp, vertical = 6.dp), fontSize = 14.sp)
-            }
-            Spacer(Modifier.width(8.dp))
-            Text(
-                "🧾 Живая касса здания",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(Modifier.width(8.dp))
-            Chip("💰 $cash ₡")
-        }
+        // Два блока от верха экрана: слева комната (шапка внутри), справа прилавок
+        Row(Modifier.fillMaxSize()) {
+            // --- ЛЕВЫЙ БЛОК: шапка + комната с дверью и ботами ---
+            Column(Modifier.weight(1.15f).fillMaxHeight()) {
+                // Шапка внутри левого блока: назад, название, заработанные деньги
+                Row(
+                    Modifier.fillMaxWidth().background(Color(0xFFF2E3C6), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 6.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        onClick = onBack,
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surface
+                    ) {
+                        Text("◀", Modifier.padding(horizontal = 9.dp, vertical = 4.dp), fontSize = 13.sp)
+                    }
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "🧾 Живая касса здания",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Chip("💰 $cash ₡")
+                }
+                Spacer(Modifier.height(4.dp))
 
-        // Два блока: слева комната, справа прилавок
-        Row(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
-            // --- ЛЕВЫЙ БЛОК: комната с дверью и ботами ---
-            Box(Modifier.weight(1.15f).fillMaxHeight()) {
                 BuildCashierRoom(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                     stock = stock,
                     price = price,
                     botsOnStage = botsOnStage,
@@ -160,11 +164,19 @@ fun BuildingCashierScreen(
                         taken
                     }
                 )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "Обслужил: $served · Очередь: ${queue.size} · На полках: $stock 🧃",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextSecondary,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
             }
 
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(6.dp))
 
-            // --- ПРАВЫЙ БЛОК: прилавок и сдача ---
+            // --- ПРАВЫЙ БЛОК: прилавок и сдача (всё на экране, без скролла) ---
             CashierCounter(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 price = price,
@@ -173,13 +185,6 @@ fun BuildingCashierScreen(
                 onServe = ::serve
             )
         }
-
-        Spacer(Modifier.height(6.dp))
-        AppCard(modifier = Modifier.padding(horizontal = 8.dp)) {
-            Text("🗒 Обслужил: $served шт. · В очереди: ${queue.size} · На полках: $stock 🧃",
-                fontWeight = FontWeight.Bold, fontSize = 12.sp)
-        }
-        Spacer(Modifier.height(8.dp))
     }
 }
 
@@ -386,7 +391,7 @@ private fun RoomRobotView(
     }
 }
 
-/** Правая половина: прилавок. Тащи товар в кассу, потом выбери сдачу (только точную). */
+/** Правая половина: прилавок. Тащи товар в кассу, потом выбери сдачу (только точную). Всё в одну линию; scroll на всякий случай. */
 @Composable
 private fun CashierCounter(
     modifier: Modifier,
@@ -395,36 +400,34 @@ private fun CashierCounter(
     served: Int,
     onServe: (KioskCustomer) -> Unit
 ) {
-    Column(modifier.background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))) {
+    Column(
+        modifier
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(10.dp))
+            .padding(horizontal = 6.dp, vertical = 6.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
         Text(
             "🛒 Прилавок",
             fontWeight = FontWeight.Bold,
-            fontSize = 13.sp,
-            modifier = Modifier.padding(start = 10.dp, top = 8.dp)
+            fontSize = 12.sp
         )
+        Spacer(Modifier.height(4.dp))
 
-        // Контент в ограниченной по высоте области со скроллом — без вложенного внешнего scroll.
-        Box(Modifier.fillMaxSize()) {
-            val customer = queue.firstOrNull()
-            if (customer == null) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("😴", fontSize = 40.sp)
-                        Text("Очередь пуста", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            if (served > 0) "Вся смена пробита!" else "Боты подходят слева.",
-                            fontSize = 11.sp, color = TextSecondary, textAlign = TextAlign.Center
-                        )
-                    }
+        val customer = queue.firstOrNull()
+        if (customer == null) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("😴", fontSize = 36.sp)
+                    Text("Очередь пуста", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        if (served > 0) "Вся смена пробита!" else "Боты подходят слева.",
+                        fontSize = 10.sp, color = TextSecondary, textAlign = TextAlign.Center
+                    )
                 }
-            } else {
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(bottom = 10.dp)
-                ) {
+            }
+            return@Column
+        }
 
         val rungSet = remember(customer.id) { mutableStateListOf<Int>() }
         val cartBounds = remember { mutableStateMapOf<Int, Rect>() }
@@ -458,64 +461,69 @@ private fun CashierCounter(
             }
         }
 
-        // Карточка покупателя
-        AppCard(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+        // Карточка покупателя — компактная
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text(
-                "🧑 Покупатель: ${customer.units} × 🧃 = ${customer.units * price} ₡",
+                "🧑 ${customer.units} × 🧃 = ${customer.units * price} ₡",
                 fontWeight = FontWeight.Bold,
-                fontSize = 12.sp
+                fontSize = 11.sp,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
             )
         }
+        Spacer(Modifier.height(4.dp))
 
-        // Доска перетаскивания
+        // Доска перетаскивания — компактная, продукт слева → касса справа
         Box(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp)
-                .height(180.dp)
-                .background(Color(0xFFEFE6D0), RoundedCornerShape(14.dp))
+                .height(96.dp)
+                .background(Color(0xFFEFE6D0), RoundedCornerShape(10.dp))
                 .onGloballyPositioned { boardOrigin = it.boundsInRoot().topLeft }
         ) {
-            // Кассовый аппарат (справа)
+            // Кассовый аппарат (справа, по центру по вертикали)
             Surface(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 16.dp, end = 10.dp)
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 8.dp)
                     .onGloballyPositioned { registerRect = it.boundsInRoot() },
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(8.dp),
                 color = Color(0xFF37474F),
                 border = BorderStroke(2.dp, Color(0xFF90A4AE))
             ) {
                 Column(
-                    Modifier.padding(10.dp),
+                    Modifier.padding(6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Касса", fontSize = 10.sp, color = Color.White)
-                    Spacer(Modifier.height(4.dp))
+                    Text("Касса", fontSize = 8.sp, color = Color.White)
+                    Spacer(Modifier.height(1.dp))
                     Text(
                         "$total ₡",
-                        fontSize = 20.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFFFF176)
                     )
                     Text(
                         if (rungSet.isEmpty()) "сюда 🧃" else "+${rungSet.size}",
-                        fontSize = 9.sp,
+                        fontSize = 7.sp,
                         color = Color.White.copy(alpha = 0.7f)
                     )
                 }
             }
 
-            // Корзина с товаром (слева) + летящая бутылка
+            // Корзина с товаром (слева, по центру по вертикали)
             Row(
-                Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Modifier.align(Alignment.CenterStart).padding(start = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 (0 until customer.units).forEach { index ->
                     if (index !in rungSet) {
                         StockJuiceTile(
                             id = index,
-                            size = 40.dp,
+                            size = 32.dp,
                             isDragging = draggedId == index,
                             onBounds = { rect ->
                                 cartBounds[index] = Rect(
@@ -542,146 +550,126 @@ private fun CashierCounter(
                         )
                     }
                 }
-                val dragging = draggedId
-                if (dragging != null) {
-                    Text(
-                        "🧃",
-                        fontSize = 26.sp,
-                        modifier = Modifier
-                            .zIndex(10f)
-                            .align(Alignment.CenterVertically)
-                            .offset {
-                                IntOffset(
-                                    (dropPos.x - 15).roundToInt(),
-                                    (dropPos.y - 17).roundToInt()
-                                )
-                            }
-                    )
-                }
+            }
+
+            // Летящая бутылка — прямой ребёнок доски (координаты доски, не Row), чтобы быть под пальцем
+            val dragging = draggedId
+            if (dragging != null) {
+                Text(
+                    "🧃",
+                    fontSize = 22.sp,
+                    modifier = Modifier
+                        .zIndex(10f)
+                        .offset {
+                            IntOffset(
+                                (dropPos.x - 11).roundToInt(),
+                                (dropPos.y - 13).roundToInt()
+                            )
+                        }
+                )
             }
         }
 
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(4.dp))
 
         if (allRung) {
             val p = payment
             if (p != null) {
-                // --- Сдача: вопрос без подсказки, 5 вариантов, один правильный ---
-                Column(modifier = Modifier.padding(horizontal = 8.dp)) {
-                    // Условие задачи
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color(0xFFFFF3E0),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(Modifier.padding(10.dp)) {
-                            Text(
-                                "🛒 Товары на $total ₡",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = Color(0xFF5D4037)
-                            )
-                            Text(
-                                "🧑 Покупатель дал ${p.paid} ₡",
-                                fontSize = 13.sp,
-                                color = Color(0xFF5D4037)
-                            )
+                // --- Сдача: условие + 5 вариантов (компактно) ---
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFFFFF3E0),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(horizontal = 6.dp, vertical = 4.dp)) {
+                        Text(
+                            "🛒 Товары на $total ₡ · 🧑 дал ${p.paid} ₡",
+                            fontSize = 10.sp,
+                            color = Color(0xFF5D4037)
+                        )
+                        Text(
+                            "Сколько дать сдачи? 🤔",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = Accent
+                        )
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+
+                val picked = answer
+                if (picked == null) {
+                    options.chunked(3).forEachIndexed { rowIdx, row ->
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            row.forEach { option ->
+                                Surface(
+                                    onClick = { answer = option },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.surface,
+                                    border = BorderStroke(1.dp, Color(0xFFD8CFBD)),
+                                    modifier = Modifier.weight(1f).height(38.dp)
+                                ) {
+                                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Text(
+                                            "$option ₡",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextSecondary
+                                        )
+                                    }
+                                }
+                            }
+                            if (row.size < 3) {
+                                repeat(3 - row.size) {
+                                    Spacer(Modifier.weight(1f))
+                                }
+                            }
+                        }
+                        if (rowIdx < options.chunked(3).lastIndex) {
                             Spacer(Modifier.height(4.dp))
-                            Text(
-                                "Сколько дать сдачи? 🤔",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = Accent
-                            )
                         }
                     }
-
-                    Spacer(Modifier.height(8.dp))
-
-                    // 5 вариантов ответа
-                    val picked = answer
-                    if (picked == null) {
-                        options.chunked(3).forEachIndexed { rowIdx, row ->
-                            Row(
-                                Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                row.forEach { option ->
-                                    Surface(
-                                        onClick = { answer = option },
-                                        shape = RoundedCornerShape(12.dp),
-                                        color = MaterialTheme.colorScheme.surface,
-                                        border = BorderStroke(1.dp, Color(0xFFD8CFBD)),
-                                        modifier = Modifier.weight(1f).height(44.dp)
-                                    ) {
-                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                            Text(
-                                                "$option ₡",
-                                                fontSize = 16.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = TextSecondary
-                                            )
-                                        }
-                                    }
-                                }
-                                if (row.size < 3) {
-                                    repeat(3 - row.size) {
-                                        Spacer(Modifier.weight(1f))
-                                    }
-                                }
-                            }
-                            if (rowIdx < options.chunked(3).lastIndex) {
-                                Spacer(Modifier.height(6.dp))
-                            }
-                        }
-                    } else {
-                        // Вердикт: верно / неверно
-                        val correct = picked == p.change
-                        Box(
-                            Modifier.fillMaxWidth().height(100.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    if (correct) "✅ Верно! Сдача $change ₡" else "❌ Неверно! Нужно $change ₡",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (correct) Color(0xFF1B5E20) else Danger
-                                )
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    "Товары $total ₡ − деньги ${p.paid} ₡ = сдача $change ₡",
-                                    fontSize = 12.sp,
-                                    color = TextSecondary
-                                )
-                                Spacer(Modifier.height(6.dp))
-                                Text("Следующий покупатель…", fontSize = 11.sp, color = TextSecondary)
-                            }
+                } else {
+                    // Вердикт: верно / неверно
+                    val correct = picked == p.change
+                    Box(
+                        Modifier.fillMaxWidth().height(64.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                if (correct) "✅ Верно! Сдача $change ₡" else "❌ Неверно! Нужно $change ₡",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (correct) Color(0xFF1B5E20) else Danger
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                "Товары $total ₡ − деньги ${p.paid} ₡ = сдача $change ₡",
+                                fontSize = 10.sp,
+                                color = TextSecondary,
+                                textAlign = TextAlign.Center
+                            )
                         }
                     }
                 }
             }
         } else {
-            // Прогресс пробивки
+            // Прогресс пробивки (компактно)
             LinearProgressIndicator(
                 progress = { (rungSet.size.toFloat() / customer.units).coerceIn(0f, 1f) },
                 color = Primary,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(6.dp)
+                modifier = Modifier.fillMaxWidth().height(6.dp)
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(2.dp))
             Text(
                 "Тащи 🧃 с полки в кассу: ${rungSet.size} / ${customer.units}",
-                fontSize = 11.sp,
-                color = TextSecondary,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                fontSize = 10.sp,
+                color = TextSecondary
             )
-        }
-
-        Spacer(Modifier.height(4.dp))
-                }
-            }
-
-            Spacer(Modifier.height(2.dp))
         }
     }
 }

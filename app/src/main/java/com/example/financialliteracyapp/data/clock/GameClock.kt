@@ -59,4 +59,11 @@ object GameClock {
         _minute.value = GameRules.WORK_DAY_START_MINUTE
         prefs?.setGameClock(GameRules.WORK_DAY_START_MINUTE, System.currentTimeMillis())
     }
+
+    /** Чит для теста: установить время дня вручную. */
+    suspend fun setMinute(minute: Int) {
+        val clamped = minute.coerceIn(0, GameRules.BED_TIME_MINUTE)
+        _minute.value = clamped
+        prefs?.setGameClock(clamped, System.currentTimeMillis())
+    }
 }

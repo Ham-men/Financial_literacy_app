@@ -5,6 +5,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -48,6 +49,7 @@ import com.example.financialliteracyapp.ui.screens.building.BuildingCashierScree
 import com.example.financialliteracyapp.ui.screens.building.CleaningGameScreen
 import com.example.financialliteracyapp.ui.screens.building.ConstructionInteriorScreen
 import com.example.financialliteracyapp.ui.screens.building.ProductsInteriorScreen
+import com.example.financialliteracyapp.ui.screens.cheats.CheatsScreen
 import com.example.financialliteracyapp.ui.screens.entertainment.EntertainmentScreen
 import com.example.financialliteracyapp.ui.screens.goals.GoalHubScreen
 import com.example.financialliteracyapp.ui.screens.kiosk.HireScreen
@@ -120,11 +122,11 @@ fun AppNavGraph(
                 )
             }
 
-            // Main content area
+            // Main content area — занимает оставшееся место после сайдбара (без двойного сдвига)
             Column(
                 Modifier
-                    .fillMaxSize()
-                    .padding(start = if (showBar) 70.dp else 0.dp)
+                    .fillMaxHeight()
+                    .weight(1f)
             ) {
                 // Global HUD: дата, время, банки с зелёной подсветкой тратной на текущей сцене
                 if (showBar) {
@@ -160,7 +162,7 @@ fun AppNavGraph(
                 )
             }
             composable(Routes.BANKS) {
-                BankScreen(onBack = { navController.popBackStack() })
+                BankScreen()
             }
             composable(Routes.MAP) {
                 MapScreen(
@@ -191,7 +193,7 @@ fun AppNavGraph(
                     ProductsInteriorScreen(
                         buildingId = kBuilding.id,
                         onExit = { navController.navigate(Routes.MAIN) },
-                        onOpenSuppliers = { navController.navigate(Routes.SUPPLIERS) },
+                        onOpenSuppliers = { navController.navigate("${Routes.SUPPLIERS}/${kBuilding.id}") },
                         onOpenCashier = { navController.navigate("${Routes.CASHIER}/${kBuilding.id}") },
                         onOpenHire = { navController.navigate(Routes.HIRE) }
                     )
@@ -214,35 +216,39 @@ fun AppNavGraph(
                     "PRODUCTS" -> ProductsInteriorScreen(
                         buildingId = buildingId,
                         onExit = { navController.popBackStack() },
-                        onOpenSuppliers = { navController.navigate(Routes.SUPPLIERS) },
+                        onOpenSuppliers = { navController.navigate("${Routes.SUPPLIERS}/$buildingId") },
                         onOpenCashier = { navController.navigate("${Routes.CASHIER}/$buildingId") },
                         onOpenHire = { navController.navigate(Routes.HIRE) }
                     )
                     "CONSTRUCTION" -> ConstructionInteriorScreen(
                         buildingId = buildingId,
                         onExit = { navController.popBackStack() },
-                        onOpenSuppliers = { navController.navigate(Routes.SUPPLIERS) },
+                        onOpenSuppliers = { navController.navigate("${Routes.SUPPLIERS}/$buildingId") },
                         onOpenCashier = { navController.navigate("${Routes.CASHIER}/$buildingId") },
                         onOpenHire = { navController.navigate(Routes.HIRE) }
                     )
                     "AUTO_SERVICE" -> AutoServiceInteriorScreen(
                         buildingId = buildingId,
                         onExit = { navController.popBackStack() },
-                        onOpenSuppliers = { navController.navigate(Routes.SUPPLIERS) },
+                        onOpenSuppliers = { navController.navigate("${Routes.SUPPLIERS}/$buildingId") },
                         onOpenCashier = { navController.navigate("${Routes.CASHIER}/$buildingId") },
                         onOpenHire = { navController.navigate(Routes.HIRE) }
                     )
                     else -> ProductsInteriorScreen(
                         buildingId = buildingId,
                         onExit = { navController.popBackStack() },
-                        onOpenSuppliers = { navController.navigate(Routes.SUPPLIERS) },
+                        onOpenSuppliers = { navController.navigate("${Routes.SUPPLIERS}/$buildingId") },
                         onOpenCashier = { navController.navigate("${Routes.CASHIER}/$buildingId") },
                         onOpenHire = { navController.navigate(Routes.HIRE) }
                     )
                 }
             }
-            composable(Routes.SUPPLIERS) {
-                SuppliersGame(onFinish = { navController.popBackStack() })
+            composable(
+                route = "${Routes.SUPPLIERS}/{buildingId}",
+                arguments = listOf(navArgument("buildingId") { type = NavType.LongType; defaultValue = 0L })
+            ) { backStackEntry ->
+                val bid = backStackEntry.arguments?.getLong("buildingId") ?: 0L
+                SuppliersGame(onFinish = { navController.popBackStack() }, buildingId = bid)
             }
             composable(Routes.PRICER) {
                 PricerGame(onFinish = { navController.popBackStack() })
@@ -279,6 +285,9 @@ fun AppNavGraph(
             composable(Routes.ENTERTAINMENT) {
                 EntertainmentScreen(onBack = { navController.popBackStack() })
             }
+            composable(Routes.CHEATS) {
+                CheatsScreen(onBack = { navController.popBackStack() })
+            }
             composable(Routes.REPORT) {
                 ReportScreen(
                     onNextDay = { navController.navigate(Routes.MAIN) {
@@ -304,7 +313,7 @@ fun AppNavGraph(
                     ConstructionInteriorScreen(
                         buildingId = building.id,
                         onExit = { navController.popBackStack() },
-                        onOpenSuppliers = { navController.navigate(Routes.SUPPLIERS) },
+                        onOpenSuppliers = { navController.navigate("${Routes.SUPPLIERS}/${building.id}") },
                         onOpenCashier = { navController.navigate("${Routes.CASHIER}/${building.id}") },
                         onOpenHire = { navController.navigate(Routes.HIRE) }
                     )
@@ -319,7 +328,7 @@ fun AppNavGraph(
                     AutoServiceInteriorScreen(
                         buildingId = building.id,
                         onExit = { navController.popBackStack() },
-                        onOpenSuppliers = { navController.navigate(Routes.SUPPLIERS) },
+                        onOpenSuppliers = { navController.navigate("${Routes.SUPPLIERS}/${building.id}") },
                         onOpenCashier = { navController.navigate("${Routes.CASHIER}/${building.id}") },
                         onOpenHire = { navController.navigate(Routes.HIRE) }
                     )

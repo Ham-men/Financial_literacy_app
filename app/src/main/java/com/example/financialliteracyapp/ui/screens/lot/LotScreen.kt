@@ -20,7 +20,6 @@ import com.example.financialliteracyapp.data.local.entity.BuildingEntity
 import com.example.financialliteracyapp.domain.economy.Balance
 import com.example.financialliteracyapp.ui.components.AppCard
 import com.example.financialliteracyapp.ui.components.BigActionButton
-import com.example.financialliteracyapp.ui.components.Chip
 import com.example.financialliteracyapp.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -60,8 +59,14 @@ fun LotScreen(
     val repo = remember { AppContainer.repo(context) }
     val scope = rememberCoroutineScope()
 
-    val cash by repo.observeWallet().collectAsState(initial = null)
-    val cashAmount = cash?.cash ?: 500
+    val wallet by repo.observeWallet().collectAsState(initial = null)
+    val cash = wallet?.cash ?: 500
+    val needPlan = wallet?.needPlan ?: 0
+    val wantPlan = wallet?.wantPlan ?: 0
+    val savePlan = wallet?.savePlan ?: 0
+    // Бюджет «нужное»: как у spendFromNeed — план в кармане + мешок, иначе весь мешок
+    val planSet = needPlan + wantPlan + savePlan > 0
+    val needAvailable = if (planSet) needPlan + cash else cash
     val buildings by repo.observeBuildings().collectAsState(initial = emptyList())
     val existing = buildings.firstOrNull { it.plotId == plotId }
 
@@ -99,8 +104,6 @@ fun LotScreen(
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.weight(1f)
             )
-            Spacer(Modifier.width(8.dp))
-            Chip("💰 $cashAmount ₡")
         }
 
         // Компактная сцена площадки / готового здания
@@ -257,15 +260,24 @@ fun LotScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            if (cashAmount < Balance.LOT_PRICE) {
+            // Оплата покупки идёт из банки «в карман» (нужное)
+            if (needAvailable < Balance.LOT_PRICE) {
                 Text(
-                    "Не хватает ${Balance.LOT_PRICE - cashAmount} ₡.",
+                    "В «кармане» (банка нужное) не хватает ${Balance.LOT_PRICE - needAvailable} ₡.",
                     color = Danger,
                     fontSize = 12.sp,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
                 )
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Переведи деньги из мешка в банку «👖 в карман» на сцене ПЛАН.",
+                    fontSize = 10.sp,
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+                )
+                Spacer(Modifier.height(8.dp))
                 BigActionButton(
                     "💪 Заработать в ларьке",
                     PrimaryDark,
@@ -273,6 +285,15 @@ fun LotScreen(
                     onClick = onBack
                 )
             } else {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Купля оплачивается из банки «👖 в карман» (нужное): $needAvailable ₡",
+                    fontSize = 11.sp,
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+                )
+                Spacer(Modifier.height(8.dp))
                 BigActionButton(
                     "🛍️ Купить за ${Balance.LOT_PRICE} ₡",
                     Primary,
@@ -286,7 +307,7 @@ fun LotScreen(
                 AlertDialog(
                     onDismissRequest = { showConfirm = false },
                     title = { Text("Купить магазин?") },
-                    text = { Text("Спишем ${Balance.LOT_PRICE} ₡. Магазин будет работать как обычный: наём, товар, касса. Пассивного дохода нет.") },
+                    text = { Text("Спишем ${Balance.LOT_PRICE} ₡ из банки «в карман» (нужное). Магазин будет работать как обычный: наём, товар, касса. Пассивного дохода нет.") },
                     confirmButton = {
                         TextButton(onClick = {
                             scope.launch {

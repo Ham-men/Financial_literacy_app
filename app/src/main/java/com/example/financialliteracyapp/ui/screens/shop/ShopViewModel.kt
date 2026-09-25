@@ -22,6 +22,10 @@ class ShopViewModel(private val repo: GameRepository) : ViewModel() {
         viewModelScope.launch { repo.purchaseStock(pricePerUnit, units) }
     }
 
+    fun purchaseStockForBuilding(buildingId: Long, pricePerUnit: Double, units: Int) {
+        viewModelScope.launch { repo.purchaseStockForBuilding(buildingId, pricePerUnit, units) }
+    }
+
     fun simulateBots(onDone: (() -> Unit)? = null) {
         viewModelScope.launch {
             repo.simulateBotDay()
