@@ -1,5 +1,7 @@
 package com.example.financialliteracyapp.ui.navigation
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -7,8 +9,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -18,9 +23,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -28,8 +36,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import com.example.financialliteracyapp.data.AppContainer
+import com.example.financialliteracyapp.data.clock.GameClock
 import com.example.financialliteracyapp.data.local.entity.BuildingEntity
+import com.example.financialliteracyapp.domain.economy.GameRules
 import com.example.financialliteracyapp.ui.components.NavSidebar
+import com.example.financialliteracyapp.ui.components.TimeBankBar
 import com.example.financialliteracyapp.ui.screens.adult.AdultScreen
 import com.example.financialliteracyapp.ui.screens.banks.BankScreen
 import com.example.financialliteracyapp.ui.screens.building.AutoServiceInteriorScreen
@@ -37,7 +48,7 @@ import com.example.financialliteracyapp.ui.screens.building.BuildingCashierScree
 import com.example.financialliteracyapp.ui.screens.building.CleaningGameScreen
 import com.example.financialliteracyapp.ui.screens.building.ConstructionInteriorScreen
 import com.example.financialliteracyapp.ui.screens.building.ProductsInteriorScreen
-import com.example.financialliteracyapp.ui.screens.food.FoodScreen
+import com.example.financialliteracyapp.ui.screens.entertainment.EntertainmentScreen
 import com.example.financialliteracyapp.ui.screens.goals.GoalHubScreen
 import com.example.financialliteracyapp.ui.screens.kiosk.HireScreen
 import com.example.financialliteracyapp.ui.screens.kiosk.KioskScreen
@@ -89,25 +100,49 @@ fun AppNavGraph(
     val currentRoute = backStackEntry?.destination?.route
     val showBar = currentRoute != null && currentRoute !in HIDDEN_BAR_ROUTES
 
-    Row(Modifier.fillMaxSize()) {
-        // Left navigation sidebar - always visible on main screens
-        if (showBar) {
-            NavSidebar(
-                currentRoute = currentRoute,
-                onNavigate = { route ->
-                    navigateToTab(navController, route)
-                }
-            )
-        }
+    val repo = remember { AppContainer.repo(context) }
+    val wallet by repo.observeWallet().collectAsState(initial = null)
+    val day by prefs.currentDay.collectAsState(initial = 1)
 
-        // Main content area
-        NavHost(
-            navController = navController,
-            startDestination = start,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = if (showBar) 70.dp else 0.dp)
-        ) {
+    // Игровые часы: 1 игр.мин = 1 реал.сек
+    LaunchedEffect(Unit) { GameClock.start(context) }
+    val gameMinute by GameClock.minute.collectAsState()
+
+    Box(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxSize()) {
+            // Left navigation sidebar - always visible on main screens
+            if (showBar) {
+                NavSidebar(
+                    currentRoute = currentRoute,
+                    onNavigate = { route ->
+                        navigateToTab(navController, route)
+                    }
+                )
+            }
+
+            // Main content area
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(start = if (showBar) 70.dp else 0.dp)
+            ) {
+                // Global HUD: дата, время, банки с зелёной подсветкой тратной на текущей сцене
+                if (showBar) {
+                    TimeBankBar(
+                        route = currentRoute,
+                        day = day,
+                        gameMinute = gameMinute,
+                        wallet = wallet
+                    )
+                }
+
+                NavHost(
+                    navController = navController,
+                    startDestination = start,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
             composable(Routes.ONBOARDING) {
                 OnboardingScreen(onFinish = {
                     navController.navigate(Routes.MAIN) {
@@ -142,7 +177,8 @@ fun AppNavGraph(
                 LotScreen(
                     plotId = plotId,
                     onBack = { navController.popBackStack() },
-                    onBuildingBuilt = { navController.popBackStack() }
+                    onBuildingBuilt = { navController.popBackStack() },
+                    onOpenShop = { id -> navController.navigate("${Routes.BUILDING}/$id") }
                 )
             }
             // Kiosk - the "ЛАРЁК" tab now opens the products building interior (СТО-style scene)
@@ -240,6 +276,9 @@ fun AppNavGraph(
             composable(Routes.GOALS) {
                 GoalHubScreen(onBack = { navController.popBackStack() })
             }
+            composable(Routes.ENTERTAINMENT) {
+                EntertainmentScreen(onBack = { navController.popBackStack() })
+            }
             composable(Routes.REPORT) {
                 ReportScreen(
                     onNextDay = { navController.navigate(Routes.MAIN) {
@@ -255,9 +294,6 @@ fun AppNavGraph(
             }
             composable(Routes.ADULT) {
                 AdultScreen(onBack = { navController.popBackStack() })
-            }
-            composable(Routes.FOOD) {
-                FoodScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.CONSTRUCTION) {
                 val context = LocalContext.current
@@ -289,11 +325,33 @@ fun AppNavGraph(
                     )
                 }
             }
+            }
+            }
+        }
+
+        // Уведомление внизу экрана: 23:00 — пора ложиться спать
+        if (showBar && GameRules.isBedtime(gameMinute) && currentRoute != Routes.MAIN) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = Color(0xFF37474F),
+                border = BorderStroke(2.dp, Color(0xFF80DEEA)),
+                onClick = { navigateToTab(navController, Routes.MAIN) }
+            ) {
+                Text(
+                    "😴 ${GameRules.timeLabel(gameMinute)} — пора ложиться спать! " +
+                        "Нажми на кровать 🛏️, чтобы начать новый день",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
-
-/** Переход по вкладке: чистим стек до Дома, сингл-топ, сохраняем состояние. */
 private fun navigateToTab(navController: NavHostController, route: String) {
     if (navController.currentDestination?.route == route) return
     navController.navigate(route) {

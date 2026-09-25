@@ -15,6 +15,7 @@ data class PetEntity(
     val mood: Int = 80,
     val energy: Int = 90,
     val level: Int = 1,          // 1=Малыш, 2=Подросток, 3=Хозяин ларька
+    val xp: Int = 0,             // опыт развлечений (игрушки) → уровень развлечений 1..5
     val x: Float = 0f,           // позиция на карте (пиксели)
     val y: Float = 0f
 )

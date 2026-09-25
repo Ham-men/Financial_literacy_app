@@ -160,7 +160,7 @@ class GameRulesTest {
     fun income_requiresSource() {
         assertTrue(GameRules.isIncomeWithSource(kind = "INCOME", category = "daily_allowance"))
         assertTrue(GameRules.isIncomeWithSource(kind = "INCOME", category = "quest_reward"))
-        assertTrue(GameRules.isIncomeWithSource(kind = "INCOME", category = "lot_rent"))
+        assertTrue(GameRules.isIncomeWithSource(kind = "INCOME", category = "lot_sale"))
         // доход без известного источника — нарушение
         assertFalse(GameRules.isIncomeWithSource(kind = "INCOME", category = ""))
         assertFalse(GameRules.isIncomeWithSource(kind = "INCOME", category = "mystery_money"))
@@ -174,7 +174,7 @@ class GameRulesTest {
 
     @Test
     fun knownIncomeSources_containAllUsedInApp() {
-        val used = setOf("start_gift", "daily_allowance", "quest_reward", "shop_sale", "bot_sales", "goal_withdraw", "lot_rent", "lot_sale", "save_interest")
+        val used = setOf("start_gift", "daily_allowance", "quest_reward", "shop_sale", "bot_sales", "goal_withdraw", "lot_sale", "save_interest")
         assertTrue(GameRules.KNOWN_INCOME_SOURCES.containsAll(used))
     }
 
@@ -214,5 +214,95 @@ class GameRulesTest {
         for (save in -50..500 step 13) {
             assertTrue(GameRules.saveInterest(save) >= 0)
         }
+    }
+
+    // --- Правило 8: уровни развлечений (игрушки → опыт → уровень → ставка копилки) ---
+
+    @Test
+    fun playLevel_progressesBy5Xp() {
+        assertEquals(1, GameRules.playLevel(0))
+        assertEquals(1, GameRules.playLevel(4))
+        assertEquals(1, GameRules.playLevel(5))   // 1 уровень = 5 опыта
+        assertEquals(2, GameRules.playLevel(10))  // 2 уровень = 10 опыта
+        assertEquals(3, GameRules.playLevel(15))
+        assertEquals(4, GameRules.playLevel(20))
+        assertEquals(5, GameRules.playLevel(25))
+        assertEquals(5, GameRules.playLevel(999))
+    }
+
+    @Test
+    fun playInterestPercent_risesWithLevel() {
+        assertEquals(5, GameRules.playInterestPercent(1))
+        assertEquals(6, GameRules.playInterestPercent(2))
+        assertEquals(9, GameRules.playInterestPercent(5))
+        // Вне границ уровень зажимается
+        assertEquals(5, GameRules.playInterestPercent(0))
+        assertEquals(9, GameRules.playInterestPercent(99))
+    }
+
+    @Test
+    fun playLevel_savesMaxAtLevel5() {
+        // 5 уровней × 5 опыта = 25 опыта максимум для копилки
+        assertEquals(25, GameRules.MAX_PLAY_LEVEL * GameRules.XP_PER_LEVEL)
+        val interestAtTop = GameRules.saveInterest(save = 100, percent = GameRules.playInterestPercent(GameRules.MAX_PLAY_LEVEL))
+        assertEquals(9, interestAtTop)
+    }
+
+    @Test
+    fun playProgress_isWithin0to1() {
+        assertEquals(0f, GameRules.playProgress(0))
+        assertEquals(0.6f, GameRules.playProgress(8), 0.001f)
+        assertEquals(0f, GameRules.playProgress(10)) // 10 % 5 = 0
+    }
+
+    // --- Правило 9: игровое время (1 игр.мин = 1 реал.сек) ---
+
+    @Test
+    fun shopOpen_workingHours10to18() {
+        // 10:00 = 600, 18:00 = 1080
+        assertEquals(600, GameRules.WORK_DAY_START_MINUTE)
+        assertEquals(1080, GameRules.WORK_DAY_END_MINUTE)
+        assertFalse(GameRules.isShopOpen(599))
+        assertTrue(GameRules.isShopOpen(600))
+        assertTrue(GameRules.isShopOpen(900))
+        assertTrue(GameRules.isShopOpen(1079))
+        assertFalse(GameRules.isShopOpen(1080))  // ровно 18:00 — магазин закрывается
+        assertFalse(GameRules.isShopOpen(1380))
+    }
+
+    @Test
+    fun canSleep_window18to23() {
+        // 23:00 = 1380
+        assertEquals(1380, GameRules.BED_TIME_MINUTE)
+        assertFalse(GameRules.canSleep(0))
+        assertFalse(GameRules.canSleep(600))
+        assertFalse(GameRules.canSleep(1079))
+        assertTrue(GameRules.canSleep(1080))   // с 18:00 можно спать
+        assertTrue(GameRules.canSleep(1200))
+        assertTrue(GameRules.canSleep(1380))   // до 23:00 включительно
+    }
+
+    @Test
+    fun isBedtime_after23() {
+        assertFalse(GameRules.isBedtime(1379))
+        assertTrue(GameRules.isBedtime(1380))
+        assertTrue(GameRules.isBedtime(9999))  // часы остановлены на 23:00
+    }
+
+    @Test
+    fun timeLabel_formats24h() {
+        assertEquals("10:00", GameRules.timeLabel(600))
+        assertEquals("11:59", GameRules.timeLabel(719))
+        assertEquals("18:00", GameRules.timeLabel(1080))
+        assertEquals("23:00", GameRules.timeLabel(1380))
+        assertEquals("00:00", GameRules.timeLabel(0))
+        assertEquals("12:34", GameRules.timeLabel(754))
+    }
+
+    @Test
+    fun dateForDay_startsAt01012020() {
+        assertEquals("01.01.2020", GameRules.dateForDay(1))
+        assertEquals("02.01.2020", GameRules.dateForDay(2))
+        assertEquals("31.12.2020", GameRules.dateForDay(366))
     }
 }

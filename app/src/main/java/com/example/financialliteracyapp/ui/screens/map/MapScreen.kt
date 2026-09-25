@@ -49,19 +49,6 @@ private fun buildingName(type: String) = when (type) {
     else -> "Магазин"
 }
 
-/** Визуал построенного магазина: 0=Ларёк, 1=Стройка, 2=СТО (согласовано с LotScreen). */
-private fun lotEmoji(type: Int) = when (type) {
-    0 -> "🛒"
-    1 -> "🔧"
-    else -> "🚗"
-}
-
-private fun lotName(type: Int) = when (type) {
-    0 -> "Ларёк"
-    1 -> "Стройка"
-    else -> "СТО"
-}
-
 /** Карта района «Рынок»: ДОМ, 3 магазина игрока, свободные (серые) и продающиеся участки. */
 private val cityMap = listOf(
     // Row 1
@@ -122,13 +109,9 @@ fun MapScreen(
 ) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
-    val prefs = remember { AppContainer.prefs(context) }
 
     /// Real buildings of the player from DB
     val buildings: List<BuildingEntity> by repo.observeBuildings().collectAsState(initial = emptyList())
-    val lotPurchased by prefs.lotPurchased.collectAsState(initial = false)
-    val lotType by prefs.lotType.collectAsState(initial = 0)
-    val lotPlotId by prefs.lotPlotId.collectAsState(initial = "")
 
     Column(
         modifier = Modifier
@@ -167,15 +150,16 @@ fun MapScreen(
             ) {
                 items(cityMap) { plot ->
                     // ===== Правила кликабельности =====
+                    // Стартовые здания привязаны к участку типом (b1/b2/b3),
+                    // купленные магазины — по plotId (s1..s16).
                     val ownedBuilding = plot.buildingType?.let { bt ->
                         buildings.firstOrNull { it.type == bt }
-                    }
-                    val purchasedHere = plot.isForSale && lotPurchased && lotPlotId == plot.id
+                    } ?: buildings.firstOrNull { it.plotId == plot.id }
+                    val purchasedHere = plot.isForSale && ownedBuilding?.isPurchased == true
 
                     val onClick: (() -> Unit)? = when {
                         plot.isHome -> onGoHome
                         ownedBuilding != null -> ({ onOpenBuilding(ownedBuilding.id) })
-                        purchasedHere -> ({ onOpenLot(plot.id) })
                         plot.isForSale -> ({ onOpenLot(plot.id) })
                         else -> null   // серый район / нет магазина — не кликабелен
                     }
@@ -184,7 +168,6 @@ fun MapScreen(
                         plot = plot,
                         ownedBuilding = ownedBuilding,
                         purchasedHere = purchasedHere,
-                        lotType = lotType,
                         onClick = onClick
                     )
                 }
@@ -198,7 +181,6 @@ private fun PlotItem(
     plot: Plot,
     ownedBuilding: BuildingEntity?,
     purchasedHere: Boolean,
-    lotType: Int,
     onClick: (() -> Unit)?
 ) {
     val clickableModifier = if (onClick != null) Modifier.clickable(onClick = onClick!!) else Modifier
@@ -207,9 +189,9 @@ private fun PlotItem(
     val isComplex = plot.isComplex
     val miniGrid = plot.miniGrid
 
-    // Магазин игрока на этом участке (своё здание или купленный участок)
-    val storeEmoji = ownedBuilding?.let { buildingEmoji(it.type) } ?: if (purchasedHere) lotEmoji(lotType) else null
-    val storeName = ownedBuilding?.let { buildingName(it.type) } ?: if (purchasedHere) lotName(lotType) else null
+    // Магазин игрока на этом участке (своё здание или купленный магазин)
+    val storeEmoji = ownedBuilding?.let { buildingEmoji(it.type) } ?: if (purchasedHere) "🏪" else null
+    val storeName = ownedBuilding?.let { buildingName(it.type) } ?: if (purchasedHere) "Магазин" else null
 
     // == Сложный участок с мини-сеткой жилого двора + магазином игрока ==
     if (isComplex && miniGrid != null) {

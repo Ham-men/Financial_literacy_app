@@ -33,11 +33,11 @@ fun NavSidebar(
         listOf(
             NavItem(Routes.MAIN, "🏠", "ДОМ", "Дом"),
             NavItem(Routes.BANKS, "💰", "ПЛАН", "План"),
-            NavItem(Routes.FOOD, "🍕", "ЕДА", "Еда"),
             NavItem(Routes.MAP, "🗺️", "КАРТА", "Карта"),
             NavItem(Routes.KIOSK, "🛒", "ЛАРЁК", "Ларёк"),
             NavItem(Routes.CONSTRUCTION, "🔧", "СТРОЙКА", "Стройка"),
-            NavItem(Routes.AUTO_SERVICE, "🚗", "СТО", "СТО")
+            NavItem(Routes.AUTO_SERVICE, "🚗", "СТО", "СТО"),
+            NavItem(Routes.ENTERTAINMENT, "🧸", "ИГРЫ", "Развлечения")
         )
     }
 

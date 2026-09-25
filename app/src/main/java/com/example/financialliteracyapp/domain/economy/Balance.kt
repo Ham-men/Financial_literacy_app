@@ -5,9 +5,11 @@ object Balance {
     const val START_CAPITAL = 500
     const val TAX_RATE = 0.13
 
-    const val FEED_COST = 15
+    const val FEED_COST = 20
+    const val HEAL_COST = 30
     const val PLAY_COST = 10
     const val PET_FOOD_HUNGER_GAIN = 25
+    const val PET_HEAL_MOOD_GAIN = 30
     const val PET_PLAY_MOOD_GAIN = 20
     const val PET_SLEEP_ENERGY_GAIN = 40
     const val PET_DECAY_PER_HOUR = 5
@@ -20,7 +22,6 @@ object Balance {
 
     const val LOT_PRICE = 300
     const val LOT_SELL_PRICE = 200
-    const val LOT_RENT_PER_DAY = 10
 
     const val COIN_DENOM = 50
     const val SAVE_INTEREST_PERCENT = 5

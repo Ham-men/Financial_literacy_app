@@ -8,11 +8,13 @@ import androidx.room.PrimaryKey
 data class CatalogItemEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val title: String = "",
+    val description: String = "", // короткое описание для комнаты развлечений
     val price: Int = 0,
     val category: String = "NEED", // NEED | WANT
     val hungerEffect: Int = 0,
     val moodEffect: Int = 0,
     val energyEffect: Int = 0,
+    val xpReward: Int = 0,      // опыт развлечений за покупку (игрушки WANT)
     val iconRes: String = "", // имя drawable ресурса
     val order: Int = 0
 )

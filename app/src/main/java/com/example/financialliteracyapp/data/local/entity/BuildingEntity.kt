@@ -21,8 +21,11 @@ data class BuildingEntity(
     val dirtLevel: Int = 0,                  // 0..100 грязь
     val upgradesBitmask: Int = 0,            // биты улучшений
     val employeesJson: String = "[]",        // JSON массив EmployeeRole
-    val isOpen: Boolean = true
+    val isOpen: Boolean = true,
+    val plotId: String = ""                  // участок карты (s1..): для купленных магазинов
 ) {
     /** Выручка за сегодня (= накопленная, пока не сброшена) — совместимость с отчётом ларька. */
     val revenueToday: Int get() = revenueTotal
+    /** Магазин куплен на участке карты (пустой plotId — стартовые здания). */
+    val isPurchased: Boolean get() = plotId.isNotEmpty()
 }

@@ -43,7 +43,13 @@ fun SuppliersGame(onFinish: () -> Unit, embedded: Boolean = false) {
     var selected by remember { mutableIntStateOf(-1) }
     val units = 50
     val cash = wallet?.cash ?: 0
-    val canAfford = selected >= 0 && cash >= (suppliersUi[selected].pricePerUnit * units).toInt()
+    val needPlan = wallet?.needPlan ?: 0
+    val wantPlan = wallet?.wantPlan ?: 0
+    val savePlan = wallet?.savePlan ?: 0
+    // Бюджет «нужное»: если план разложен — банка нужное + мешок, иначе весь мешок
+    val planSet = needPlan + wantPlan + savePlan > 0
+    val needAvailable = if (planSet) needPlan + cash else cash
+    val canAfford = selected >= 0 && needAvailable >= (suppliersUi[selected].pricePerUnit * units).toInt()
 
     Column(
         modifier = Modifier
@@ -67,7 +73,7 @@ fun SuppliersGame(onFinish: () -> Unit, embedded: Boolean = false) {
                 style = MaterialTheme.typography.titleLarge)
         }
         Spacer(Modifier.height(4.dp))
-        Text("Купи $units лимонадов по лучшей цене · Доступно: $cash ₡",
+        Text("Купи $units лимонадов по лучшей цене · Бюджет «нужное»: $needAvailable ₡ (нужное $needPlan + мешок $cash)",
             color = TextSecondary, fontSize = 12.sp)
         Spacer(Modifier.height(8.dp))
 

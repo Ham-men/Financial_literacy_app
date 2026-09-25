@@ -65,12 +65,14 @@ private fun QuestItem(quest: QuestEntity) {
         "PLANNING" -> "📅"
         "SAVING" -> "🐷"
         "SPENDING" -> "💳"
+        "PLAY" -> "🧸"
         else -> "📋"
     }
     val topicLabel = when (quest.topic) {
         "PLANNING" -> "Планирование"
         "SAVING" -> "Сбережения"
         "SPENDING" -> "Покупки"
+        "PLAY" -> "Развлечения"
         else -> quest.topic
     }
 

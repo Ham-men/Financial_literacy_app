@@ -18,8 +18,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.financialliteracyapp.data.AppContainer
+import com.example.financialliteracyapp.domain.economy.Balance
+import com.example.financialliteracyapp.domain.economy.GameRules
 import com.example.financialliteracyapp.ui.components.Chip
 import com.example.financialliteracyapp.ui.components.StatBar
 import com.example.financialliteracyapp.ui.theme.*
@@ -36,10 +39,12 @@ fun MainScreen(
 ) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
-    val vm: MainViewModel = viewModel(factory = MainViewModel.factory(repo))
-
     val prefs = remember { AppContainer.prefs(context) }
-    val currentDay by prefs.currentDay.collectAsState(initial = 1)
+    val vm: MainViewModel = viewModel(factory = MainViewModel.factory(repo, prefs))
+
+    val day by vm.day.collectAsState()
+    val gameMinute by vm.gameMinute.collectAsState()
+    val sleepMessage by vm.sleepMessage.collectAsState()
 
     val pet by vm.pet.collectAsState()
     val wallet by vm.wallet.collectAsState()
@@ -62,6 +67,9 @@ fun MainScreen(
     val needPlan = wallet?.needPlan ?: 0
     val wantPlan = wallet?.wantPlan ?: 0
     val savePlan = wallet?.savePlan ?: 0
+    // Бюджет «нужное»: если план разложен — банка нужное + мешок, иначе весь мешок
+    val planSet = needPlan + wantPlan + savePlan > 0
+    val needAvailable = if (planSet) needPlan + cash else cash
 
     // Эмодзи Финни по состоянию
     val petEmoji = when {
@@ -73,6 +81,7 @@ fun MainScreen(
     }
 
     var showMenu by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -87,7 +96,7 @@ fun MainScreen(
             verticalAlignment = Alignment.Top
         ) {
             Text(
-                "Дата 01.01.2020  12:00",
+                "День $day — ${GameRules.dateForDay(day)}  ${GameRules.timeLabel(gameMinute)}",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black
@@ -100,6 +109,7 @@ fun MainScreen(
                 Text("$needPlan  \\  $wantPlan  \\  $savePlan", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                 Spacer(Modifier.height(4.dp))
                 Text("параметры", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                Text("уровень  $level ($stageLabel)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                 Text("сытость  $hunger", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                 Text("настроение  $mood", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                 Text("бодрость  $energy", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
@@ -162,36 +172,77 @@ fun MainScreen(
                         .offset(y = (-35).dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("🐱", fontSize = 38.sp)
+                    Text(petEmoji, fontSize = 38.sp)
                 }
             }
 
             // Bed right side
-            Text("🛏️", fontSize = 60.sp, modifier = Modifier
-                .graphicsLayer { rotationZ = -5f }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("🛏️", fontSize = 60.sp, modifier = Modifier
+                    .graphicsLayer { rotationZ = -5f }
+                    .clickable { vm.sleep() }
+                )
+                Text(
+                    if (GameRules.canSleep(gameMinute)) "Лечь спать → новый день" else "Спать: 18:00–23:00",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (GameRules.canSleep(gameMinute)) Color(0xFF2E7D32) else TextSecondary,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+
+        // Сообщение о сне (список_scene)
+        sleepMessage?.let { msg ->
+            Spacer(Modifier.height(8.dp))
+            Text(
+                msg,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1565C0),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
             )
         }
 
         Spacer(Modifier.height(32.dp))
 
-        // Feed button at bottom center - use Box with contentAlignment
-        Box(
+        // Feed + Heal buttons at bottom center
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 32.dp).padding(bottom = 16.dp),
-            contentAlignment = Alignment.BottomCenter
+                .padding(horizontal = 16.dp).padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Button(
-                onClick = { /* TODO: feed action */ },
+                onClick = { scope.launch { vm.feed() } },
+                enabled = needAvailable >= Balance.FEED_COST,
                 modifier = Modifier
-                    .height(48.dp),
+                    .height(48.dp)
+                    .padding(horizontal = 6.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFFF9800),
                     contentColor = Color.White
                 ),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("🍖 Покормить Финни", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text("🍖 Покормить — ${Balance.FEED_COST}₡", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+
+            Button(
+                onClick = { scope.launch { vm.heal() } },
+                enabled = needAvailable >= Balance.HEAL_COST,
+                modifier = Modifier
+                    .height(48.dp)
+                    .padding(horizontal = 6.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF4CAF50),
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text("💊 Лечение — ${Balance.HEAL_COST}₡", fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
         }
 

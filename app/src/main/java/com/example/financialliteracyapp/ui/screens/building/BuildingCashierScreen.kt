@@ -31,7 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.example.financialliteracyapp.data.AppContainer
+import com.example.financialliteracyapp.data.clock.GameClock
 import com.example.financialliteracyapp.domain.economy.BotBrain
+import com.example.financialliteracyapp.domain.economy.GameRules
 import com.example.financialliteracyapp.ui.components.AppCard
 import com.example.financialliteracyapp.ui.components.Chip
 import com.example.financialliteracyapp.ui.screens.kiosk.KioskCustomer
@@ -202,6 +204,7 @@ private fun BuildCashierRoom(
         val door = with(density) { Offset(44.dp.toPx(), (sceneH - 68.dp.toPx()).coerceAtLeast(60.dp.toPx())) }
         val shelf = with(density) { Offset((sceneW - 60.dp.toPx()).coerceAtLeast(0f), (sceneH - 178.dp.toPx()).coerceAtLeast(40.dp.toPx())) }
         val cashPos = with(density) { Offset((sceneW - 30.dp.toPx()).coerceAtLeast(0f), (sceneH - 58.dp.toPx()).coerceAtLeast(60.dp.toPx())) }
+        val gameMinute by GameClock.minute.collectAsState()
 
         Box(
             Modifier
@@ -311,11 +314,26 @@ private fun BuildCashierRoom(
             var id = 0
             while (true) {
                 delay(1300)
+                if (!GameRules.isShopOpen(gameMinute)) break // после 18:00 магазин закрыт
                 if (botsOnStage.size + queue.size >= buyers) break
                 id++
                 val taken = onSpawnBot(StageBot(id = id, units = Random.nextInt(1, 3)))
                 if (!taken) break
             }
+        }
+        // Закрыто после 18:00 — боты в магазин не заходят
+        if (!GameRules.isShopOpen(gameMinute)) {
+            Text(
+                "🔴 Магазин закрыт (после 18:00). Рабочий день до 18:00.",
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 60.dp)
+                    .background(Color(0xFFFFCDD2), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                color = Color(0xFFB71C1C),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }

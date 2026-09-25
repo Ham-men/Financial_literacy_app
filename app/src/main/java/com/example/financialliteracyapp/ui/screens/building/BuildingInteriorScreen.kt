@@ -18,7 +18,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.financialliteracyapp.data.AppContainer
 import com.example.financialliteracyapp.data.GameRepository
+import com.example.financialliteracyapp.data.clock.GameClock
 import com.example.financialliteracyapp.data.local.entity.BotEntity
+import com.example.financialliteracyapp.domain.economy.GameRules
 import com.example.financialliteracyapp.ui.components.AppCard
 import com.example.financialliteracyapp.ui.components.Chip
 import com.example.financialliteracyapp.ui.theme.*
@@ -50,6 +52,12 @@ fun BuildingInteriorScreen(
     var runningDay by remember { mutableStateOf(false) }
     var hireSalary by remember { mutableIntStateOf(100) }
     val cash = wallet?.cash ?: 500
+    val needPlan = wallet?.needPlan ?: 0
+    val wantPlan = wallet?.wantPlan ?: 0
+    val savePlan = wallet?.savePlan ?: 0
+    // Бюджет трат из «нужного»: если план разложен — банка нужное + мешок, иначе весь мешок
+    val planSet = needPlan + wantPlan + savePlan > 0
+    val needAvailable = if (planSet) needPlan + cash else cash
 
     val stock = building?.stock ?: 0
     val price = building?.price ?: 8
@@ -57,6 +65,9 @@ fun BuildingInteriorScreen(
     val buildingCash = building?.cash ?: 0
     val soldToday = building?.soldToday ?: 0
     val isOpen = building?.isOpen ?: true
+    val gameMinute by GameClock.minute.collectAsState()
+    val clockIsOpen = GameRules.isShopOpen(gameMinute)
+    val shopActuallyOpen = isOpen && clockIsOpen
     val dirtLevel = building?.dirtLevel ?: 0
     val isProducts = building?.type == "PRODUCTS"
 
@@ -85,7 +96,7 @@ fun BuildingInteriorScreen(
                 modifier = Modifier.weight(1f)
             )
             Spacer(Modifier.width(8.dp))
-            Chip("💰 $cash ₡")
+            Chip("💰 Мешок $cash ₡ · Нужное $needPlan ₡")
         }
 
         // Комната здания (вид сбоку как в KioskScreen)
@@ -299,7 +310,8 @@ Text(
                     else
                         "Заказов в работе: $stock. Прайс ремонта: $price ₡. Себестоимость: $costPrice ₡.") +
                     " Продаж сегодня: $soldToday." +
-                    (if (isOpen) "\n🟢 Открыто" else "\n🔴 Закрыто") +
+                    (if (shopActuallyOpen) "\n🟢 Открыто (${GameRules.timeLabel(gameMinute)})"
+                     else "\n🔴 Закрыто" + (if (clockIsOpen) "" else " — после 18:00")) +
                     (if (dirtLevel > 50) "\n🧽 Грязно! Боты сердятся — уберись." else "")
                 else
                     "Склад пуст. Закупите детали/товар перед открытием.",
@@ -361,7 +373,7 @@ Text(
             }
             Spacer(Modifier.height(6.dp))
             Text(
-                "Зарплата списывается из кармана Финни (💰 $cash ₡) в кошелёк бота — тот сможет покупать в этом здании.",
+                "Зарплата списывается из банки «нужное» (доступно $needAvailable ₡: нужное $needPlan + мешок $cash) в кошелёк бота — тот сможет покупать в этом здании.",
                 fontSize = 12.sp,
                 color = TextSecondary
             )
@@ -399,7 +411,7 @@ Text(
                                     repo.hireBotToBuilding(bot.id, buildingId, hireSalary)
                                 }
                             },
-                            enabled = cash >= 50,
+                            enabled = needAvailable >= 50,
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Primary)
                         ) {

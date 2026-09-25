@@ -173,33 +173,92 @@ class GameRepository(private val db: AppDatabase) {
                 QuestEntity(topic = "SAVING", title = "Цель ближе", description = "Положи в копилку не меньше 50 ₡, увидь, как шкала цели подросла", reward = 50, order = 2),
                 QuestEntity(topic = "SAVING", title = "Не снимай сразу", description = "Соблазн купить торт из копилки; если снимаешь — подтверждаешь и видишь сдвиг срока", reward = 50, order = 3),
                 QuestEntity(topic = "SPENDING", title = "Сравни цены", description = "Два одинаковых корма, разная цена; купи дешевле (мини-игра «Найди дешевле»)", reward = 50, order = 4),
-                QuestEntity(topic = "SPENDING", title = "Сдача на кассе", description = "Клиент дал 100, товар 70; дай сдачу 30 (мини-игра «Касса»)", reward = 50, order = 5)
+                QuestEntity(topic = "SPENDING", title = "Сдача на кассе", description = "Клиент дал 100, товар 70; дай сдачу 30 (мини-игра «Касса»)", reward = 50, order = 5),
+                QuestEntity(topic = "PLAY", title = "Первая игрушка", description = "Купи игрушку для Финни в комнате развлечений и получи первый опыт", reward = 50, order = 6, progress = 0, target = 3),
+                QuestEntity(topic = "PLAY", title = "Уровень развлечений 2", description = "Набери 10 опыта с игрушками — копилка начнёт расти быстрее", reward = 70, order = 7, progress = 0, target = 10),
+                QuestEntity(topic = "PLAY", title = "Уровень развлечений 5", description = "Набери 25 опыта с игрушками — копилка получит максимальную ставку", reward = 120, order = 8, progress = 0, target = 25)
             )
             db.questDao().upsertAll(quests)
+        } else if (db.questDao().observeAll().first().none { it.topic == "PLAY" }) {
+            // Существующие установки: добавляем задания комнаты развлечений.
+            db.questDao().upsertAll(
+                listOf(
+                    QuestEntity(topic = "PLAY", title = "Первая игрушка", description = "Купи игрушку для Финни в комнате развлечений и получи первый опыт", reward = 50, order = 6, progress = 0, target = 3),
+                    QuestEntity(topic = "PLAY", title = "Уровень развлечений 2", description = "Набери 10 опыта с игрушками — копилка начнёт расти быстрее", reward = 70, order = 7, progress = 0, target = 10),
+                    QuestEntity(topic = "PLAY", title = "Уровень развлечений 5", description = "Набери 25 опыта с игрушками — копилка получит максимальную ставку", reward = 120, order = 8, progress = 0, target = 25)
+                )
+            )
         }
         if (db.catalogItemDao().observeAll().first().isEmpty()) {
             val items = listOf(
-                CatalogItemEntity(title = "Корм", price = 40, category = "NEED", hungerEffect = 40, iconRes = "ic_item_food", order = 0),
-                CatalogItemEntity(title = "Вода", price = 20, category = "NEED", hungerEffect = 15, iconRes = "ic_item_water", order = 1),
-                CatalogItemEntity(title = "Расчёска / уход", price = 25, category = "NEED", moodEffect = 10, iconRes = "ic_item_brush", order = 2),
-                CatalogItemEntity(title = "Подстилка", price = 50, category = "NEED", energyEffect = 15, iconRes = "ic_item_bedding", order = 3),
-                CatalogItemEntity(title = "Мячик", price = 60, category = "WANT", moodEffect = 25, iconRes = "ic_item_ball", order = 4),
-                CatalogItemEntity(title = "Бантик", price = 35, category = "WANT", moodEffect = 10, iconRes = "ic_item_bow", order = 5),
-                CatalogItemEntity(title = "Картина на стену", price = 80, category = "WANT", moodEffect = 15, iconRes = "ic_item_picture", order = 6),
-                CatalogItemEntity(title = "Праздничный торт", price = 90, category = "WANT", moodEffect = 20, iconRes = "ic_item_cake", order = 7)
+                CatalogItemEntity(title = "Корм", description = "Сытный обед для голодного дня", price = 40, category = "NEED", hungerEffect = 40, iconRes = "ic_item_food", order = 0),
+                CatalogItemEntity(title = "Вода", description = "Свежая вода в мисочке", price = 20, category = "NEED", hungerEffect = 15, iconRes = "ic_item_water", order = 1),
+                CatalogItemEntity(title = "Расчёска / уход", description = "Шёрстка будет блестеть", price = 25, category = "NEED", moodEffect = 10, iconRes = "ic_item_brush", order = 2),
+                CatalogItemEntity(title = "Подстилка", description = "Мягкое место для сна", price = 50, category = "NEED", energyEffect = 15, iconRes = "ic_item_bedding", order = 3),
+                CatalogItemEntity(title = "Мячик", description = "Гоняй по полу и лови лапкой", price = 60, category = "WANT", moodEffect = 25, xpReward = 3, iconRes = "ic_item_ball", order = 4),
+                CatalogItemEntity(title = "Бантик", description = "Яркий бантик для красивых фото", price = 35, category = "WANT", moodEffect = 10, xpReward = 2, iconRes = "ic_item_bow", order = 5),
+                CatalogItemEntity(title = "Картина на стену", description = "Картина, чтобы любоваться на рыб", price = 80, category = "WANT", moodEffect = 15, xpReward = 4, iconRes = "ic_item_picture", order = 6),
+                CatalogItemEntity(title = "Праздничный торт", description = "Торт на праздничный день", price = 90, category = "WANT", moodEffect = 20, xpReward = 5, iconRes = "ic_item_cake", order = 7)
             )
             db.catalogItemDao().upsertAll(items)
         }
     }
 
     // --- Питомец ---
+    /** Списать cost из банки (need/want) или из мешка, если план не разложен. Копилку не тратим. */
+    private suspend fun spendFromPlan(useNeed: Boolean, cost: Int): Boolean {
+        if (cost <= 0) return true
+        val wallet = db.walletDao().getOnce() ?: return false
+        val planSet = wallet.needPlan + wallet.wantPlan + wallet.savePlan > 0
+        val updated: WalletEntity? = when {
+            !useNeed && planSet -> {
+                val remaining = (wallet.wantPlan + wallet.cash) - cost
+                if (remaining < 0) null
+                else wallet.copy(
+                    cash = if (wallet.wantPlan >= cost) wallet.cash
+                           else (wallet.wantPlan + wallet.cash - cost).coerceAtLeast(0),
+                    wantPlan = (wallet.wantPlan - cost).coerceAtLeast(0),
+                    wantFact = wallet.wantFact + cost
+                )
+            }
+            useNeed && planSet -> {
+                val remaining = (wallet.needPlan + wallet.cash) - cost
+                if (remaining < 0) null
+                else wallet.copy(
+                    cash = if (wallet.needPlan >= cost) wallet.cash
+                           else (wallet.needPlan + wallet.cash - cost).coerceAtLeast(0),
+                    needPlan = (wallet.needPlan - cost).coerceAtLeast(0),
+                    needFact = wallet.needFact + cost
+                )
+            }
+            else -> {
+                val newCash = GameRules.spend(wallet.cash, cost) ?: return false
+                wallet.copy(cash = newCash)
+            }
+        }
+        if (updated == null) return false
+        db.walletDao().upsert(updated)
+        return true
+    }
+
+    /** Банка «нужное»: еда, лечение, товар в магазины, найм и зарплаты. */
+    private suspend fun spendFromNeed(cost: Int): Boolean = spendFromPlan(useNeed = true, cost)
+
+    /** Банка «желаемое»: игрушки для Финни (витрина WANT). */
+    private suspend fun spendFromWant(cost: Int): Boolean = spendFromPlan(useNeed = false, cost)
+
     suspend fun feedPet(cost: Int = Balance.FEED_COST) {
         val pet = db.petDao().getOnce() ?: PetEntity()
-        val wallet = db.walletDao().getOnce() ?: WalletEntity()
-        val newCash = GameRules.spend(wallet.cash, cost) ?: return
-        db.walletDao().upsert(wallet.copy(cash = newCash))
+        if (!spendFromNeed(cost)) return
         db.petDao().upsert(pet.copy(hunger = (pet.hunger + Balance.PET_FOOD_HUNGER_GAIN).coerceAtMost(100)))
         db.transactionDao().insert(TransactionEntity(kind = "EXPENSE", category = "pet_food", amount = cost))
+    }
+
+    suspend fun healPet(cost: Int = Balance.HEAL_COST) {
+        val pet = db.petDao().getOnce() ?: PetEntity()
+        if (!spendFromNeed(cost)) return
+        db.petDao().upsert(pet.copy(mood = (pet.mood + Balance.PET_HEAL_MOOD_GAIN).coerceAtMost(100)))
+        db.transactionDao().insert(TransactionEntity(kind = "EXPENSE", category = "pet_heal", amount = cost))
     }
 
     suspend fun playWithPet(cost: Int = Balance.PLAY_COST) {
@@ -282,10 +341,8 @@ class GameRepository(private val db: AppDatabase) {
 
     suspend fun purchaseStockForBuilding(buildingId: Long, supplierPricePerUnit: Double, units: Int) {
         val building = db.buildingDao().observeById(buildingId).first() ?: return
-        val wallet = db.walletDao().getOnce() ?: WalletEntity()
         val cost = (supplierPricePerUnit * units).toInt()
-        val newCash = GameRules.spend(wallet.cash, cost) ?: return
-        db.walletDao().upsert(wallet.copy(cash = newCash))
+        if (!spendFromNeed(cost)) return
         db.buildingDao().upsert(
             building.copy(
                 stock = building.stock + units,
@@ -353,12 +410,10 @@ class GameRepository(private val db: AppDatabase) {
         )
     }
 
-    /** Найм бота на работу в здание игрока: привязка workBuildingId + зарплата (плюс разовый сбор 50 ₡). */
+    /** Найм бота на работу в здание игрока: привязка workBuildingId + зарплата (плюс разовый сбор 50 ₡ из «нужного»). */
     suspend fun hireBotToBuilding(botId: Long, buildingId: Long, salary: Int) {
         val bot = db.botDao().getAllOnce().find { it.id == botId } ?: return
-        val wallet = db.walletDao().getOnce() ?: return
-        val newCash = GameRules.spend(wallet.cash, 50) ?: return
-        db.walletDao().upsert(wallet.copy(cash = newCash))
+        if (!spendFromNeed(50)) return
         db.botDao().upsert(bot.copy(workBuildingId = buildingId, salary = salary, state = "HOME"))
         db.transactionDao().insert(
             TransactionEntity(kind = "EXPENSE", category = "hiring", amount = 50, buildingId = buildingId)
@@ -367,9 +422,7 @@ class GameRepository(private val db: AppDatabase) {
 
     suspend fun paySalaryToBot(botId: Long, amount: Int) {
         val bot = db.botDao().getAllOnce().find { it.id == botId } ?: return
-        val wallet = db.walletDao().getOnce() ?: return
-        val newCash = GameRules.spend(wallet.cash, amount) ?: return
-        db.walletDao().upsert(wallet.copy(cash = newCash))
+        if (!spendFromNeed(amount)) return
         db.botDao().upsert(bot.copy(wallet = bot.wallet + amount))
         db.transactionDao().insert(
             TransactionEntity(kind = "EXPENSE", category = "salary", amount = amount)
@@ -391,14 +444,11 @@ class GameRepository(private val db: AppDatabase) {
         var totalRent = 0
         var totalTax = 0
 
-        // Игрок платит зарплаты сотрудникам своих зданий
+        // Игрок платит зарплаты сотрудникам своих зданий (из банки «нужное»)
         for (building in buildings) {
             val employees = workingBots.filter { it.workBuildingId == building.id }
             val salaryCost = employees.sumOf { it.salary }
-            val playerWallet = db.walletDao().getOnce() ?: WalletEntity()
-            val newCash = GameRules.spend(playerWallet.cash, salaryCost)
-            if (newCash != null) {
-                db.walletDao().upsert(playerWallet.copy(cash = newCash))
+            if (salaryCost > 0 && spendFromNeed(salaryCost)) {
                 totalSalary += salaryCost
                 db.transactionDao().insert(
                     TransactionEntity(kind = "EXPENSE", category = "salary", amount = salaryCost, buildingId = building.id)
@@ -407,7 +457,7 @@ class GameRepository(private val db: AppDatabase) {
                 for (bot in employees) {
                     db.botDao().upsert(bot.copy(wallet = bot.wallet + bot.salary, state = "WORKING"))
                 }
-            } else {
+            } else if (salaryCost > 0) {
                 // Не хватает на зарплату — боты не работают, лояльность падает
                 for (bot in employees) {
                     db.botDao().upsert(bot.copy(loyalty = (bot.loyalty * 0.5f).coerceIn(0f, 1f), state = "HOME"))
@@ -508,9 +558,12 @@ class GameRepository(private val db: AppDatabase) {
 
     suspend fun resetDay() {
         // Копилка — накопительный счёт: проценты возвращаются в банку копилка.
+        // Ставка растёт с уровнем развлечений Финни (базовые 5% + 1% за уровень).
         val wallet = db.walletDao().getOnce()
         if (wallet != null) {
-            val interest = GameRules.saveInterest(wallet.savePlan, Balance.SAVE_INTEREST_PERCENT)
+            val pet = db.petDao().getOnce() ?: PetEntity()
+            val level = GameRules.playLevel(pet.xp)
+            val interest = GameRules.saveInterest(wallet.savePlan, GameRules.playInterestPercent(level))
             // Факт за день сбрасывается, банки остаются (перераспределение — кнопкой «Вывести всё в мешок»).
             db.walletDao().upsert(
                 wallet.copy(savePlan = wallet.savePlan + interest, needFact = 0, wantFact = 0, saveFact = 0)
@@ -537,89 +590,103 @@ class GameRepository(private val db: AppDatabase) {
     // --- Зарплата кассира (совместимость со старым кодом) ---
     suspend fun payCashierSalary(hired: Boolean) {
         if (!hired) return
-        val wallet = db.walletDao().getOnce() ?: return
-        val newCash = GameRules.spend(wallet.cash, Balance.CASHIER_SALARY) ?: return
-        db.walletDao().upsert(wallet.copy(cash = newCash))
+        if (!spendFromNeed(Balance.CASHIER_SALARY)) return
         db.transactionDao().insert(
             TransactionEntity(kind = "EXPENSE", category = "salary", amount = Balance.CASHIER_SALARY)
         )
     }
 
-    // --- Участок / аренда ---
-    suspend fun payLotRent(owned: Boolean) {
-        if (!owned) return
-        val wallet = db.walletDao().getOnce() ?: return
-        db.walletDao().upsert(wallet.copy(cash = wallet.cash + Balance.LOT_RENT_PER_DAY))
-        db.transactionDao().insert(
-            TransactionEntity(kind = "INCOME", category = "lot_rent", amount = Balance.LOT_RENT_PER_DAY)
-        )
-    }
-
-    suspend fun buyLot() {
-        val wallet = db.walletDao().getOnce() ?: return
-        val newCash = GameRules.spend(wallet.cash, Balance.LOT_PRICE) ?: return
-        db.walletDao().upsert(wallet.copy(cash = newCash))
+    // --- Участки / купленные магазины (v5: здание = рабочее место + продажа) ---
+    /** Покупка магазина на свободном участке: создаём рабочее здание, пассивного дохода нет.
+     *  Оплата из банки «нужное» (вложение в бизнес). */
+    suspend fun buyShop(plotId: String, type: String): Boolean {
+        if (db.buildingDao().getByPlotId(plotId) != null) return false
+        if (!spendFromNeed(Balance.LOT_PRICE)) return false
         db.transactionDao().insert(
             TransactionEntity(kind = "EXPENSE", category = "lot", amount = Balance.LOT_PRICE)
         )
+        db.buildingDao().upsert(
+            BuildingEntity(
+                type = type,
+                district = "Рынок",
+                level = 1,
+                stock = 20,
+                price = defaultPriceFor(type),
+                costPrice = defaultCostFor(type),
+                cash = 0,
+                isOpen = true,
+                plotId = plotId
+            )
+        )
+        return true
     }
 
-    suspend fun sellLot() {
+    private fun defaultPriceFor(type: String): Int = when (type) {
+        "AUTO_SERVICE" -> 30
+        "CONSTRUCTION" -> 15
+        else -> 8
+    }
+
+    private fun defaultCostFor(type: String): Int = when (type) {
+        "AUTO_SERVICE" -> 12
+        "CONSTRUCTION" -> 6
+        else -> 3
+    }
+
+    /** Продажа купленного магазина: возврат части денег, здание удаляется с карты. */
+    suspend fun sellShop(plotId: String) {
+        val building = db.buildingDao().getByPlotId(plotId) ?: return
         val wallet = db.walletDao().getOnce() ?: return
         db.walletDao().upsert(wallet.copy(cash = wallet.cash + Balance.LOT_SELL_PRICE))
         db.transactionDao().insert(
             TransactionEntity(kind = "INCOME", category = "lot_sale", amount = Balance.LOT_SELL_PRICE)
         )
+        db.buildingDao().deleteByPlotId(plotId)
     }
 
-    // --- Каталог покупок для питомца ---
+    // --- Каталог покупок для питомца (витрина: нужное/желаемое) ---
     suspend fun buyCatalogItem(itemId: Int) {
         val catalog = db.catalogItemDao().observeAll().first()
         val item = catalog.find { it.id == itemId } ?: return
-        val wallet = db.walletDao().getOnce() ?: WalletEntity()
-        val planSet = wallet.needPlan + wallet.wantPlan + wallet.savePlan > 0
         val pet = db.petDao().getOnce() ?: PetEntity()
 
-        val updated: WalletEntity? = when {
-            planSet && item.category == "NEED" -> {
-                val remaining = (wallet.needPlan + wallet.cash) - item.price
-                if (remaining < 0) null
-                else wallet.copy(
-                    cash = if (wallet.needPlan >= item.price) wallet.cash
-                           else (wallet.needPlan + wallet.cash - item.price).coerceAtLeast(0),
-                    needPlan = (wallet.needPlan - item.price).coerceAtLeast(0),
-                    needFact = wallet.needFact + item.price
-                )
-            }
-            planSet && item.category == "WANT" -> {
-                val remaining = (wallet.wantPlan + wallet.cash) - item.price
-                if (remaining < 0) null
-                else wallet.copy(
-                    cash = if (wallet.wantPlan >= item.price) wallet.cash
-                           else (wallet.wantPlan + wallet.cash - item.price).coerceAtLeast(0),
-                    wantPlan = (wallet.wantPlan - item.price).coerceAtLeast(0),
-                    wantFact = wallet.wantFact + item.price
-                )
-            }
-            !planSet -> {
-                val newCash = GameRules.spend(wallet.cash, item.price) ?: return
-                wallet.copy(cash = newCash)
-            }
-            else -> null
+        val paid = when (item.category) {
+            "NEED" -> spendFromNeed(item.price)
+            "WANT" -> spendFromWant(item.price)
+            else -> false
         }
-        if (updated == null) return
+        if (!paid) return
 
-        db.walletDao().upsert(updated)
         db.petDao().upsert(
             pet.copy(
                 hunger = (pet.hunger + item.hungerEffect).coerceAtMost(100),
                 mood   = (pet.mood   + item.moodEffect).coerceAtMost(100),
-                energy = (pet.energy + item.energyEffect).coerceAtMost(100)
+                energy = (pet.energy + item.energyEffect).coerceAtMost(100),
+                xp     = (pet.xp     + item.xpReward).coerceAtMost(GameRules.MAX_PLAY_LEVEL * GameRules.XP_PER_LEVEL)
             )
         )
         db.transactionDao().insert(
             TransactionEntity(kind = "EXPENSE", category = "shop_purchase", amount = item.price)
         )
+        updatePlayQuests(pet.xp + item.xpReward)
+    }
+
+    /** Задания комнаты развлечений: прогресс = набранный опыт, при достижении цели — награда. */
+    private suspend fun updatePlayQuests(xp: Int) {
+        val play = db.questDao().observeAll().first().filter { it.topic == "PLAY" && !it.completed }
+        for (quest in play) {
+            val newProgress = xp.coerceAtMost(quest.target)
+            if (newProgress <= quest.progress) continue
+            val done = newProgress >= quest.target
+            db.questDao().upsert(quest.copy(progress = newProgress, completed = done))
+            if (done) {
+                val wallet = db.walletDao().getOnce() ?: continue
+                db.walletDao().upsert(wallet.copy(cash = wallet.cash + quest.reward))
+                db.transactionDao().insert(
+                    TransactionEntity(kind = "INCOME", category = "quest_reward", amount = quest.reward)
+                )
+            }
+        }
     }
 
     // --- Цели ---

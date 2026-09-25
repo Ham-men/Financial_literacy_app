@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.financialliteracyapp.data.AppContainer
+import com.example.financialliteracyapp.data.local.entity.BuildingEntity
 import com.example.financialliteracyapp.domain.economy.Balance
 import com.example.financialliteracyapp.ui.components.AppCard
 import com.example.financialliteracyapp.ui.components.BigActionButton
@@ -26,42 +27,47 @@ import kotlinx.coroutines.launch
 /** Варианты магазинов на покупной площадке: Ларёк / Стройка / СТО. */
 private data class ShopPlan(val id: Int, val emoji: String, val name: String, val desc: String, val bg: Color)
 
-/** Визуал купленного магазина, согласован с картой (MapScreen.lotEmoji/lotName). */
-private fun lotEmoji(type: Int) = when (type) {
-    0 -> "🛒"
-    1 -> "🔧"
-    else -> "🚗"
+/** Тип здания по номеру плана участка (0=Ларёк, 1=Стройка, 2=СТО). */
+private fun planToType(id: Int) = when (id) {
+    0 -> "PRODUCTS"
+    1 -> "CONSTRUCTION"
+    else -> "AUTO_SERVICE"
 }
 
-private fun lotName(type: Int) = when (type) {
-    0 -> "Ларёк"
-    1 -> "Стройка"
-    else -> "СТО"
+private fun buildingEmoji(type: String) = when (type) {
+    "PRODUCTS" -> "🛒"
+    "CONSTRUCTION" -> "🔧"
+    "AUTO_SERVICE" -> "🚗"
+    else -> "🏪"
 }
 
-/** Покупка магазина на свободном районе карты. Компактный экран под телефон. */
+private fun buildingName(type: String) = when (type) {
+    "PRODUCTS" -> "Ларёк"
+    "CONSTRUCTION" -> "Стройматериалы"
+    "AUTO_SERVICE" -> "СТО"
+    else -> "Магазин"
+}
+
+/** Покупка магазина на свободном районе карты. Купленное здание работает как остальные магазины. */
 @Composable
 fun LotScreen(
     plotId: String,
     onBack: () -> Unit,
-    onBuildingBuilt: () -> Unit
+    onBuildingBuilt: () -> Unit,
+    onOpenShop: (Long) -> Unit
 ) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
-    val prefs = remember { AppContainer.prefs(context) }
     val scope = rememberCoroutineScope()
 
     val cash by repo.observeWallet().collectAsState(initial = null)
     val cashAmount = cash?.cash ?: 500
-    val lotPurchased by prefs.lotPurchased.collectAsState(initial = false)
-    val lotType by prefs.lotType.collectAsState(initial = 0)
+    val buildings by repo.observeBuildings().collectAsState(initial = emptyList())
+    val existing = buildings.firstOrNull { it.plotId == plotId }
 
     var selectedPlan by remember { mutableStateOf(0) }
     var showConfirm by remember { mutableStateOf(false) }
     var showSellConfirm by remember { mutableStateOf(false) }
-
-    val buildingEmoji = lotEmoji(lotType)
-    val buildingName = lotName(lotType)
 
     val plans = listOf(
         ShopPlan(0, "🛒", "Ларёк", "продукты", Color(0xFFC8E6C9)),
@@ -89,7 +95,7 @@ fun LotScreen(
             }
             Spacer(Modifier.width(8.dp))
             Text(
-                "🛍️ Купить магазин",
+                if (existing != null) "Магазин на участке" else "🛍️ Купить магазин",
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.weight(1f)
             )
@@ -116,9 +122,9 @@ fun LotScreen(
                     .fillMaxWidth()
                     .height(52.dp)
                     .align(Alignment.BottomCenter)
-                    .background(if (lotPurchased) Color(0xFF81C784) else Color(0xFFA1887F))
+                    .background(if (existing != null) Color(0xFF81C784) else Color(0xFFA1887F))
             )
-            if (lotPurchased) {
+            if (existing != null) {
                 // Готовый магазин с вывеской
                 Surface(
                     Modifier.align(Alignment.Center),
@@ -129,10 +135,10 @@ fun LotScreen(
                         Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(buildingEmoji, fontSize = 30.sp)
+                        Text(buildingEmoji(existing.type), fontSize = 30.sp)
                         Spacer(Modifier.width(10.dp))
                         Column {
-                            Text(buildingName, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextSecondary)
+                            Text(buildingName(existing.type), fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextSecondary)
                             Text("куплено", fontSize = 11.sp, color = Primary, fontWeight = FontWeight.Bold)
                         }
                     }
@@ -150,7 +156,6 @@ fun LotScreen(
                     ) {
                         Text("「 Продаётся 」", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Accent)
                         Text("${Balance.LOT_PRICE} ₡", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                        Text("+${Balance.LOT_RENT_PER_DAY} ₡/день", fontSize = 11.sp, color = TextSecondary)
                     }
                 }
                 Text("👷", fontSize = 30.sp, modifier = Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 6.dp))
@@ -160,17 +165,26 @@ fun LotScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        if (lotPurchased) {
+        if (existing != null) {
             AppCard(modifier = Modifier.padding(horizontal = 12.dp)) {
-                Text("💡 Площадка освоена", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("💡 Магазин работает", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Здание приносит +${Balance.LOT_RENT_PER_DAY} ₡ каждый день. " +
-                    "Продажа вернёт только ${Balance.LOT_SELL_PRICE} ₡ (было ${Balance.LOT_PRICE} ₡).",
+                    "Жми «Открыть магазин», чтобы нанять персонал, закупить товар, " +
+                    "пробить кассу и посмотреть учёт — как в обычном лареке. " +
+                    "Пассивного дохода нет. Продажа вернёт только ${Balance.LOT_SELL_PRICE} ₡ (было ${Balance.LOT_PRICE} ₡).",
                     fontSize = 12.sp,
                     color = TextSecondary
                 )
             }
+
+            Spacer(Modifier.height(8.dp))
+
+            BigActionButton(
+                "🏪 Открыть магазин",
+                Primary,
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp)
+            ) { onOpenShop(existing.id) }
 
             Spacer(Modifier.height(8.dp))
 
@@ -188,9 +202,7 @@ fun LotScreen(
                     confirmButton = {
                         TextButton(onClick = {
                             scope.launch {
-                                repo.sellLot()
-                                prefs.setLotPurchased(false)
-                                prefs.setLotPlotId("")
+                                repo.sellShop(plotId)
                                 showSellConfirm = false
                                 onBuildingBuilt()
                             }
@@ -235,7 +247,8 @@ fun LotScreen(
 
             AppCard(modifier = Modifier.padding(horizontal = 12.dp)) {
                 Text(
-                    "Участок стоит ${Balance.LOT_PRICE} ₡, здание приносит +${Balance.LOT_RENT_PER_DAY} ₡/день. " +
+                    "Участок стоит ${Balance.LOT_PRICE} ₡. Здание работает как остальные магазины: " +
+                    "персонал, товар, касса, найм. Пассивного дохода нет. " +
                     "Продажа вернёт только ${Balance.LOT_SELL_PRICE} ₡.",
                     fontSize = 11.sp,
                     color = TextSecondary
@@ -273,14 +286,11 @@ fun LotScreen(
                 AlertDialog(
                     onDismissRequest = { showConfirm = false },
                     title = { Text("Купить магазин?") },
-                    text = { Text("Спишем ${Balance.LOT_PRICE} ₡. Будет приносить +${Balance.LOT_RENT_PER_DAY} ₡ каждый день.") },
+                    text = { Text("Спишем ${Balance.LOT_PRICE} ₡. Магазин будет работать как обычный: наём, товар, касса. Пассивного дохода нет.") },
                     confirmButton = {
                         TextButton(onClick = {
                             scope.launch {
-                                repo.buyLot()
-                                prefs.setLotPurchased(true)
-                                prefs.setLotType(selectedPlan)
-                                prefs.setLotPlotId(plotId)
+                                repo.buyShop(plotId, planToType(selectedPlan))
                                 showConfirm = false
                                 onBuildingBuilt()
                             }

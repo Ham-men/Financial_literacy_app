@@ -29,7 +29,6 @@ fun ReportScreen(onNextDay: () -> Unit) {
     val shop by vm.shop.collectAsState()
     val day by vm.day.collectAsState()
     val cashierHired by vm.cashierHired.collectAsState()
-    val lotPurchased by vm.lotPurchased.collectAsState()
 
     val price = shop?.price ?: Balance.LEMONADE_BASE_PRICE
     val costPrice = shop?.costPrice ?: Balance.LEMONADE_COST
@@ -39,8 +38,7 @@ fun ReportScreen(onNextDay: () -> Unit) {
     val rent = Balance.SHOP_RENT_MARKET
     val tax = (revenue * Balance.TAX_RATE).toInt()
     val salary = if (cashierHired) Balance.CASHIER_SALARY else 0
-    val lotIncome = if (lotPurchased) Balance.LOT_RENT_PER_DAY else 0
-    val profit = revenue - cost - rent - tax - salary + lotIncome
+    val profit = revenue - cost - rent - tax - salary
 
     val visitors = 20 // MVP: 20 ботов
     val bought = sold
@@ -66,7 +64,6 @@ fun ReportScreen(onNextDay: () -> Unit) {
             ReportRow("Аренда:", "−$rent ₡", Danger)
             ReportRow("Налог (13%):", "−$tax ₡", Danger)
             if (cashierHired) ReportRow("Зарплата Милы:", "−$salary ₡", Danger)
-            if (lotPurchased) ReportRow("Доход от участка:", "+$lotIncome ₡", Primary)
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             ReportRow("Чистая прибыль:", "${if (profit >= 0) "+" else ""}$profit ₡", if (profit >= 0) Primary else Danger, big = true)
         }

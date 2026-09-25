@@ -27,6 +27,15 @@ interface BuildingDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(buildings: List<BuildingEntity>)
 
+    @Query("SELECT * FROM buildings WHERE plotId = :plotId LIMIT 1")
+    suspend fun getByPlotId(plotId: String): BuildingEntity?
+
+    @Query("DELETE FROM buildings WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM buildings WHERE plotId = :plotId")
+    suspend fun deleteByPlotId(plotId: String)
+
     @Query("DELETE FROM buildings")
     suspend fun clear()
 }

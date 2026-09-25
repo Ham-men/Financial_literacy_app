@@ -48,6 +48,7 @@ fun ProgressScreen(onBack: () -> Unit, embedded: Boolean = false) {
             "PLANNING" -> "📅"
             "SAVING" -> "🐷"
             "SPENDING" -> "💳"
+            "PLAY" -> "🧸"
             else -> "📋"
         }
     }

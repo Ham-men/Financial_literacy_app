@@ -4,8 +4,10 @@ import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.financialliteracyapp.domain.economy.GameRules
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -20,9 +22,8 @@ class UserPrefs(private val context: Context) {
     val onboardingDone: Flow<Boolean> = context.dataStore.data.map { it[ONBOARDING] ?: false }
     val currentDay: Flow<Int> = context.dataStore.data.map { it[DAY] ?: 1 }
     val cashierHired: Flow<Boolean> = context.dataStore.data.map { it[CASHIER] ?: false }
-    val lotPurchased: Flow<Boolean> = context.dataStore.data.map { it[LOT_PURCHASED] ?: false }
-    val lotType: Flow<Int> = context.dataStore.data.map { it[LOT_TYPE] ?: 0 }
-    val lotPlotId: Flow<String> = context.dataStore.data.map { it[LOT_PLOT_ID] ?: "" }
+    val gameMinute: Flow<Int> = context.dataStore.data.map { it[GAME_MINUTE] ?: GameRules.WORK_DAY_START_MINUTE }
+    val gameClockEpoch: Flow<Long> = context.dataStore.data.map { it[GAME_CLOCK_EPOCH] ?: System.currentTimeMillis() }
 
     suspend fun setPetName(name: String) {
         context.dataStore.edit { it[PET_NAME] = name }
@@ -48,16 +49,11 @@ class UserPrefs(private val context: Context) {
         context.dataStore.edit { it[CASHIER] = hired }
     }
 
-    suspend fun setLotPurchased(purchased: Boolean) {
-        context.dataStore.edit { it[LOT_PURCHASED] = purchased }
-    }
-
-    suspend fun setLotType(type: Int) {
-        context.dataStore.edit { it[LOT_TYPE] = type }
-    }
-
-    suspend fun setLotPlotId(plotId: String) {
-        context.dataStore.edit { it[LOT_PLOT_ID] = plotId }
+    suspend fun setGameClock(minute: Int, epochMs: Long) {
+        context.dataStore.edit {
+            it[GAME_MINUTE] = minute
+            it[GAME_CLOCK_EPOCH] = epochMs
+        }
     }
 
     companion object {
@@ -67,8 +63,7 @@ class UserPrefs(private val context: Context) {
         private val ONBOARDING = booleanPreferencesKey("onboarding_done")
         private val DAY = intPreferencesKey("current_day")
         private val CASHIER = booleanPreferencesKey("cashier_hired")
-        private val LOT_PURCHASED = booleanPreferencesKey("lot_purchased")
-        private val LOT_TYPE = intPreferencesKey("lot_type")
-        private val LOT_PLOT_ID = stringPreferencesKey("lot_plot_id")
+        private val GAME_MINUTE = intPreferencesKey("game_minute")
+        private val GAME_CLOCK_EPOCH = longPreferencesKey("game_clock_epoch")
     }
 }
