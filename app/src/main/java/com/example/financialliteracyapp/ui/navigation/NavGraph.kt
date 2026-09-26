@@ -3,6 +3,7 @@ package com.example.financialliteracyapp.ui.navigation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -28,6 +29,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -47,13 +49,14 @@ import com.example.financialliteracyapp.game.PassiveSales
 import com.example.financialliteracyapp.ui.components.NavSidebar
 import com.example.financialliteracyapp.ui.components.TimeBankBar
 import com.example.financialliteracyapp.ui.screens.adult.AdultScreen
+import com.example.financialliteracyapp.ui.screens.appearance.AppearanceScreen
+import com.example.financialliteracyapp.ui.screens.journal.JournalScreen
 import com.example.financialliteracyapp.ui.screens.banks.BankScreen
 import com.example.financialliteracyapp.ui.screens.building.AutoServiceInteriorScreen
 import com.example.financialliteracyapp.ui.screens.building.BuildingCashierScreen
 import com.example.financialliteracyapp.ui.screens.building.CleaningGameScreen
 import com.example.financialliteracyapp.ui.screens.building.ConstructionInteriorScreen
 import com.example.financialliteracyapp.ui.screens.building.ProductsInteriorScreen
-import com.example.financialliteracyapp.ui.screens.cheats.CheatsScreen
 import com.example.financialliteracyapp.ui.screens.entertainment.EntertainmentScreen
 import com.example.financialliteracyapp.ui.screens.goals.GoalHubScreen
 import com.example.financialliteracyapp.ui.screens.kiosk.HireScreen
@@ -77,7 +80,8 @@ private val HIDDEN_BAR_ROUTES = setOf(
     Routes.ONBOARDING,
     Routes.PRICER,
     Routes.SHELVES,
-    Routes.CLEANING
+    Routes.CLEANING,
+    "${Routes.CLEANING}/{buildingId}"
 )
 
 @Composable
@@ -109,6 +113,9 @@ fun AppNavGraph(
     val currentRoute = backStackEntry?.destination?.route
     val showBar = currentRoute != null && currentRoute !in HIDDEN_BAR_ROUTES
 
+    val configuration = LocalConfiguration.current
+    val landscape = remember(configuration) { configuration.screenWidthDp >= configuration.screenHeightDp }
+
     val repo = remember { AppContainer.repo(context) }
     val wallet by repo.observeWallet().collectAsState(initial = null)
     val day by prefs.currentDay.collectAsState(initial = 1)
@@ -120,6 +127,11 @@ fun AppNavGraph(
         PassiveSales.start(context)
     }
     val gameMinute by GameClock.minute.collectAsState()
+
+    // День из prefs → репозиторий: транзакции и периоды пишутся с правильным днём.
+    LaunchedEffect(day) {
+        repo.syncDay(day)
+    }
 
     // ===== Обучение при первом запуске =====
     val tutorialVm: TutorialViewModel = viewModel()
@@ -156,40 +168,33 @@ fun AppNavGraph(
     }
 
     Box(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxSize()) {
-            // Left navigation sidebar - always visible on main screens
-            if (showBar) {
-                NavSidebar(
-                    currentRoute = currentRoute,
-                    onNavigate = { route ->
-                        navigateToTab(navController, route)
-                    }
-                )
-            }
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val landscape = maxWidth >= maxHeight
 
-            // Main content area — занимает оставшееся место после сайдбара (без двойного сдвига)
-            Column(
-                Modifier
-                    .fillMaxHeight()
-                    .weight(1f)
-            ) {
-                // Global HUD: дата, время, банки с зелёной подсветкой тратной на текущей сцене
-                if (showBar) {
-                    TimeBankBar(
-                        route = currentRoute,
-                        day = day,
-                        gameMinute = gameMinute,
-                        wallet = wallet
-                    )
-                }
-
-                NavHost(
-                    navController = navController,
-                    startDestination = start,
-                    modifier = Modifier
+            // Контент (TimeBankBar + NavHost) — единый для обеих ориентаций
+            val content: @Composable () -> Unit = {
+                Column(
+                    Modifier
                         .fillMaxWidth()
-                        .weight(1f)
+                        .fillMaxHeight()
                 ) {
+                    // Global HUD: дата, время, банки с зелёной подсветкой тратной на текущей сцене
+                    if (showBar) {
+                        TimeBankBar(
+                            route = currentRoute,
+                            day = day,
+                            gameMinute = gameMinute,
+                            wallet = wallet
+                        )
+                    }
+
+                    NavHost(
+                        navController = navController,
+                        startDestination = start,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    ) {
             composable(Routes.ONBOARDING) {
                 OnboardingScreen(onFinish = {
                     navController.navigate(Routes.MAIN) {
@@ -199,11 +204,7 @@ fun AppNavGraph(
             }
             composable(Routes.MAIN) {
                 MainScreen(
-                    onOpenMap       = { navController.navigate(Routes.MAP) },
-                    onOpenKiosk     = { navController.navigate(Routes.KIOSK) },
-                    onOpenProgress  = { navController.navigate(Routes.PROGRESS) },
-                    onOpenReference = { navController.navigate(Routes.REFERENCE) },
-                    onOpenAdult     = { navController.navigate(Routes.ADULT) }
+                    onOpenAppearance = { navController.navigate(Routes.APPEARANCE) }
                 )
             }
             composable(Routes.BANKS) {
@@ -343,14 +344,28 @@ fun AppNavGraph(
                 ShelvesGame(onFinish = { navController.popBackStack() })
             }
             composable(Routes.GOALS) {
-                GoalHubScreen(onBack = { navController.popBackStack() })
+                GoalHubScreen()
+            }
+            composable(Routes.JOURNAL) {
+                JournalScreen(onFinish = { navController.popBackStack() })
             }
             composable(Routes.ENTERTAINMENT) {
-                EntertainmentScreen(onBack = { navController.popBackStack() })
+                EntertainmentScreen()
             }
-            composable(Routes.CHEATS) {
-                CheatsScreen(
-                    onBack = { navController.popBackStack() },
+            composable(Routes.APPEARANCE) {
+                AppearanceScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.REPORT) {
+                ReportScreen()
+            }
+            composable(Routes.PROGRESS) {
+                ProgressScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.REFERENCE) {
+                ReferenceScreen()
+            }
+            composable(Routes.ADULT) {
+                AdultScreen(
                     onRestartTutorial = {
                         scope.launch { prefs.setTutorialDone(false) }
                         tutorialVm.start()
@@ -359,22 +374,6 @@ fun AppNavGraph(
                         }
                     }
                 )
-            }
-            composable(Routes.REPORT) {
-                ReportScreen(
-                    onNextDay = { navController.navigate(Routes.MAIN) {
-                        popUpTo(0) { inclusive = true }
-                    } }
-                )
-            }
-            composable(Routes.PROGRESS) {
-                ProgressScreen(onBack = { navController.popBackStack() })
-            }
-            composable(Routes.REFERENCE) {
-                ReferenceScreen(onBack = { navController.popBackStack() })
-            }
-            composable(Routes.ADULT) {
-                AdultScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.CONSTRUCTION) {
                 val context = LocalContext.current
@@ -408,6 +407,37 @@ fun AppNavGraph(
             }
             }
             }
+            }
+
+            if (landscape) {
+                Row(Modifier.fillMaxSize()) {
+                    // Left navigation sidebar in landscape
+                    if (showBar) {
+                        NavSidebar(
+                            currentRoute = currentRoute,
+                            onNavigate = { route -> navigateToTab(navController, route) }
+                        )
+                    }
+                    Column(Modifier.fillMaxHeight().weight(1f)) {
+                        content()
+                    }
+                }
+            } else {
+                Column(Modifier.fillMaxSize()) {
+                    // Content on top, nav panel at the bottom in portrait
+                    Column(Modifier.fillMaxWidth().weight(1f)) {
+                        content()
+                    }
+                    if (showBar) {
+                        NavSidebar(
+                            currentRoute = currentRoute,
+                            onNavigate = { route -> navigateToTab(navController, route) },
+                            modifier = Modifier.fillMaxWidth(),
+                            bottomBar = true
+                        )
+                    }
+                }
+            }
         }
 
         // Уведомление внизу экрана: 23:00 — пора ложиться спать
@@ -415,7 +445,10 @@ fun AppNavGraph(
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                    .padding(
+                        horizontal = 14.dp,
+                        vertical = if (landscape) 10.dp else 66.dp
+                    ),
                 shape = RoundedCornerShape(16.dp),
                 color = Color(0xFF37474F),
                 border = BorderStroke(2.dp, Color(0xFF80DEEA)),

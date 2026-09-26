@@ -5,6 +5,7 @@ import com.example.financialliteracyapp.data.local.entity.BotEntity
 import com.example.financialliteracyapp.data.local.entity.BuildingEntity
 import com.example.financialliteracyapp.data.local.entity.CatalogItemEntity
 import com.example.financialliteracyapp.data.local.entity.GoalEntity
+import com.example.financialliteracyapp.data.local.entity.PeriodEntity
 import com.example.financialliteracyapp.data.local.entity.PetEntity
 import com.example.financialliteracyapp.data.local.entity.QuestEntity
 import com.example.financialliteracyapp.data.local.entity.TransactionEntity
@@ -19,6 +20,18 @@ import kotlin.math.min
 /** Репозиторий v5.0: здания, боты с позициями, замкнутый экономический цикл. */
 class GameRepository(private val db: AppDatabase) {
 
+    /** Текущий игровой день: транзакции и периоды пишутся с этим номером. */
+    @Volatile private var day: Int = 1
+
+    /** Синхронизация дня из prefs (NavGraph + смена дня). */
+    fun syncDay(newDay: Int) {
+        day = newDay.coerceAtLeast(1)
+    }
+
+    /** Транзакция с днём, в который она совершена (вместо жёсткого day=1). */
+    private fun insertTx(kind: String, category: String, amount: Int, buildingId: Long? = null) =
+        TransactionEntity(day = day, kind = kind, category = category, amount = amount, buildingId = buildingId)
+
     fun observePet() = db.petDao().observe()
     fun observeWallet() = db.walletDao().observe()
     fun observeBuildings() = db.buildingDao().observeAll()
@@ -26,6 +39,29 @@ class GameRepository(private val db: AppDatabase) {
     fun observeBuildingById(id: Long) = db.buildingDao().observeById(id)
     fun observeBuildingsByDistrict(district: String) = db.buildingDao().observeByDistrict(district)
     fun observeTransactions() = db.transactionDao().observeAll()
+    fun observePeriods() = db.periodDao().observeAll()
+
+    /** Закрыть игровой день: снимок плана-факта + доход/расход дня (вызывать ПОСЛЕ дня, до resetDay). */
+    suspend fun closePeriod() {
+        val w = db.walletDao().getOnce() ?: return
+        val needPlan = w.needPlan + w.needFact
+        val wantPlan = w.wantPlan + w.wantFact
+        val savePlan = w.savePlan + w.saveFact
+        db.periodDao().upsert(
+            PeriodEntity(
+                day = day,
+                needPlan = needPlan,
+                wantPlan = wantPlan,
+                savePlan = savePlan,
+                needFact = w.needFact,
+                wantFact = w.wantFact,
+                saveFact = w.saveFact,
+                income = db.transactionDao().incomeOfDay(day),
+                expense = db.transactionDao().expenseOfDay(day),
+                success = GameRules.daySuccess(needPlan, wantPlan, savePlan, w.needFact, w.wantFact, w.saveFact)
+            )
+        )
+    }
     fun observeBots() = db.botDao().observeAll()
     fun observeWorkersForBuilding(buildingId: Long) = db.botDao().observeByWorkplace(buildingId)
     fun observeGoals() = db.goalDao().observeAll()
@@ -71,6 +107,9 @@ class GameRepository(private val db: AppDatabase) {
     }
 
     suspend fun upsertPet(pet: PetEntity) = db.petDao().upsert(pet)
+
+    /** Текущий уровень роста Финни (для сообщения о росте после сна). */
+    suspend fun petLevelOnce(): Int = db.petDao().getOnce()?.level ?: 1
 
     suspend fun ensureSeed() {
         if (db.petDao().getOnce() == null) {
@@ -120,7 +159,7 @@ class GameRepository(private val db: AppDatabase) {
         }
         if (db.goalDao().observeAll().first().isEmpty()) {
             val goals = listOf(
-                GoalEntity(title = "Мячик для Финни", targetAmount = 300, currentAmount = 0, order = 0),
+                GoalEntity(title = "Мячик для Финни", targetAmount = 300, currentAmount = 0, isActive = true, order = 0),
                 GoalEntity(title = "Палатка в парке", targetAmount = 800, currentAmount = 0, order = 1),
                 GoalEntity(title = "Набор художника", targetAmount = 1500, currentAmount = 0, order = 2)
             )
@@ -211,14 +250,14 @@ class GameRepository(private val db: AppDatabase) {
         val pet = db.petDao().getOnce() ?: PetEntity()
         if (!spendFromNeed(cost)) return
         db.petDao().upsert(pet.copy(hunger = (pet.hunger + Balance.PET_FOOD_HUNGER_GAIN).coerceAtMost(100)))
-        db.transactionDao().insert(TransactionEntity(kind = "EXPENSE", category = "pet_food", amount = cost))
+        db.transactionDao().insert(insertTx(kind = "EXPENSE", category = "pet_food", amount = cost))
     }
 
     suspend fun healPet(cost: Int = Balance.HEAL_COST) {
         val pet = db.petDao().getOnce() ?: PetEntity()
         if (!spendFromNeed(cost)) return
         db.petDao().upsert(pet.copy(mood = (pet.mood + Balance.PET_HEAL_MOOD_GAIN).coerceAtMost(100)))
-        db.transactionDao().insert(TransactionEntity(kind = "EXPENSE", category = "pet_heal", amount = cost))
+        db.transactionDao().insert(insertTx(kind = "EXPENSE", category = "pet_heal", amount = cost))
     }
 
     suspend fun playWithPet(cost: Int = Balance.PLAY_COST) {
@@ -269,6 +308,19 @@ class GameRepository(private val db: AppDatabase) {
                 needPlan = 0, wantPlan = 0, savePlan = 0
             )
         )
+    }
+
+    /** Перенос суммы из банки обратно в мешок (например «Снять» с копилки). */
+    suspend fun moveBankToBag(bank: String, amount: Int) {
+        if (amount <= 0) return
+        val w = db.walletDao().getOnce() ?: return
+        val updated = when (bank) {
+            "NEED" -> w.copy(cash = w.cash + amount, needPlan = (w.needPlan - amount).coerceAtLeast(0))
+            "WANT" -> w.copy(cash = w.cash + amount, wantPlan = (w.wantPlan - amount).coerceAtLeast(0))
+            "SAVE" -> w.copy(cash = w.cash + amount, savePlan = (w.savePlan - amount).coerceAtLeast(0))
+            else -> return
+        }
+        db.walletDao().upsert(updated)
     }
 
     /** Чит для теста: прибавить деньги напрямую в банку (карман/желаемое/копилка) без списания с мешка. */
@@ -324,7 +376,7 @@ class GameRepository(private val db: AppDatabase) {
             )
         )
         db.transactionDao().insert(
-            TransactionEntity(kind = "EXPENSE", category = "stock_purchase", amount = cost, buildingId = buildingId)
+            insertTx(kind = "EXPENSE", category = "stock_purchase", amount = cost, buildingId = buildingId)
         )
     }
 
@@ -359,12 +411,12 @@ class GameRepository(private val db: AppDatabase) {
         db.walletDao().upsert(wallet.copy(cash = wallet.cash + profit))
         if (revenue > 0) {
             db.transactionDao().insert(
-                TransactionEntity(kind = "INCOME", category = "bot_sales", amount = revenue, buildingId = buildingId)
+                insertTx(kind = "INCOME", category = "bot_sales", amount = revenue, buildingId = buildingId)
             )
         }
         if (cost > 0) {
             db.transactionDao().insert(
-                TransactionEntity(kind = "EXPENSE", category = "cogs", amount = cost, buildingId = buildingId)
+                insertTx(kind = "EXPENSE", category = "cogs", amount = cost, buildingId = buildingId)
             )
         }
     }
@@ -389,12 +441,12 @@ class GameRepository(private val db: AppDatabase) {
         )
         if (revenue > 0) {
             db.transactionDao().insert(
-                TransactionEntity(kind = "INCOME", category = "bot_sales", amount = revenue, buildingId = buildingId)
+                insertTx(kind = "INCOME", category = "bot_sales", amount = revenue, buildingId = buildingId)
             )
         }
         if (cost > 0) {
             db.transactionDao().insert(
-                TransactionEntity(kind = "EXPENSE", category = "cogs", amount = cost, buildingId = buildingId)
+                insertTx(kind = "EXPENSE", category = "cogs", amount = cost, buildingId = buildingId)
             )
         }
         return true
@@ -412,7 +464,7 @@ class GameRepository(private val db: AppDatabase) {
         val w = db.walletDao().getOnce() ?: return 0
         db.walletDao().upsert(w.copy(cash = w.cash + amount))
         db.transactionDao().insert(
-            TransactionEntity(kind = "INCOME", category = "shop_withdraw", amount = amount, buildingId = buildingId)
+            insertTx(kind = "INCOME", category = "shop_withdraw", amount = amount, buildingId = buildingId)
         )
         return amount
     }
@@ -427,7 +479,7 @@ class GameRepository(private val db: AppDatabase) {
         val wallet = db.walletDao().getOnce() ?: return
         db.walletDao().upsert(wallet.copy(cash = wallet.cash + amount))
         db.transactionDao().insert(
-            TransactionEntity(kind = "INCOME", category = "cleaning_reward", amount = amount)
+            insertTx(kind = "INCOME", category = "cleaning_reward", amount = amount)
         )
     }
 
@@ -437,7 +489,7 @@ class GameRepository(private val db: AppDatabase) {
         if (!spendFromNeed(50)) return
         db.botDao().upsert(bot.copy(workBuildingId = buildingId, salary = salary, state = "HOME"))
         db.transactionDao().insert(
-            TransactionEntity(kind = "EXPENSE", category = "hiring", amount = 50, buildingId = buildingId)
+            insertTx(kind = "EXPENSE", category = "hiring", amount = 50, buildingId = buildingId)
         )
     }
 
@@ -446,7 +498,7 @@ class GameRepository(private val db: AppDatabase) {
         if (!spendFromNeed(amount)) return
         db.botDao().upsert(bot.copy(wallet = bot.wallet + amount))
         db.transactionDao().insert(
-            TransactionEntity(kind = "EXPENSE", category = "salary", amount = amount)
+            insertTx(kind = "EXPENSE", category = "salary", amount = amount)
         )
     }
 
@@ -472,7 +524,7 @@ class GameRepository(private val db: AppDatabase) {
             if (salaryCost > 0 && spendFromNeed(salaryCost)) {
                 totalSalary += salaryCost
                 db.transactionDao().insert(
-                    TransactionEntity(kind = "EXPENSE", category = "salary", amount = salaryCost, buildingId = building.id)
+                    insertTx(kind = "EXPENSE", category = "salary", amount = salaryCost, buildingId = building.id)
                 )
                 // Боты получают зарплату
                 for (bot in employees) {
@@ -529,17 +581,17 @@ class GameRepository(private val db: AppDatabase) {
                 totalTax += tax
 
                 db.transactionDao().insert(
-                    TransactionEntity(kind = "INCOME", category = "bot_sales", amount = revenue, buildingId = building.id)
+                    insertTx(kind = "INCOME", category = "bot_sales", amount = revenue, buildingId = building.id)
                 )
                 db.transactionDao().insert(
-                    TransactionEntity(kind = "EXPENSE", category = "cogs", amount = cost, buildingId = building.id)
+                    insertTx(kind = "EXPENSE", category = "cogs", amount = cost, buildingId = building.id)
                 )
                 db.transactionDao().insert(
-                    TransactionEntity(kind = "EXPENSE", category = "rent", amount = rent, buildingId = building.id)
+                    insertTx(kind = "EXPENSE", category = "rent", amount = rent, buildingId = building.id)
                 )
                 if (tax > 0) {
                     db.transactionDao().insert(
-                        TransactionEntity(kind = "EXPENSE", category = "tax", amount = tax, buildingId = building.id)
+                        insertTx(kind = "EXPENSE", category = "tax", amount = tax, buildingId = building.id)
                     )
                 }
             }
@@ -591,10 +643,32 @@ class GameRepository(private val db: AppDatabase) {
             )
             if (interest > 0) {
                 db.transactionDao().insert(
-                    TransactionEntity(kind = "INCOME", category = "save_interest", amount = interest)
+                    insertTx(kind = "INCOME", category = "save_interest", amount = interest)
                 )
             }
         }
+        // Рост Финни: закрытый день → счётчики привычек → стадия.
+        // Последний период — это день, который только что закрыли (closePeriod перед resetDay).
+        val period = db.periodDao().last()
+        val petBefore = db.petDao().getOnce() ?: PetEntity()
+        val successfulAdd = if (period != null && period.success) 1 else 0
+        val mandatoryAdd = if (period != null &&
+            db.transactionDao().categoriesOfDay(period.day).any { GameRules.isMandatoryCategory(it) }
+        ) 1 else 0
+        val goals = db.goalDao().observeAll().first()
+        val totalSaved = (wallet?.savePlan ?: 0) + goals.sumOf { it.currentAmount }
+        val newSuccessful = petBefore.successfulDays + successfulAdd
+        val newMandatory = petBefore.mandatoryDays + mandatoryAdd
+        val newLevel = GameRules.growthLevel(totalSaved, newSuccessful, newMandatory)
+        val grown = newLevel > petBefore.level
+        db.petDao().upsert(
+            petBefore.copy(
+                successfulDays = newSuccessful,
+                mandatoryDays = newMandatory,
+                totalSaved = totalSaved,
+                level = newLevel
+            )
+        )
         // Сброс soldToday у зданий
         val buildings = db.buildingDao().observeAll().first()
         for (b in buildings) {
@@ -614,7 +688,7 @@ class GameRepository(private val db: AppDatabase) {
         val total = Balance.CASHIER_SALARY * count
         if (!spendFromNeed(total)) return
         db.transactionDao().insert(
-            TransactionEntity(kind = "EXPENSE", category = "salary", amount = total)
+            insertTx(kind = "EXPENSE", category = "salary", amount = total)
         )
     }
 
@@ -625,7 +699,7 @@ class GameRepository(private val db: AppDatabase) {
         if (db.buildingDao().getByPlotId(plotId) != null) return false
         if (!spendFromNeed(Balance.LOT_PRICE)) return false
         db.transactionDao().insert(
-            TransactionEntity(kind = "EXPENSE", category = "lot", amount = Balance.LOT_PRICE)
+            insertTx(kind = "EXPENSE", category = "lot", amount = Balance.LOT_PRICE)
         )
         db.buildingDao().upsert(
             BuildingEntity(
@@ -661,7 +735,7 @@ class GameRepository(private val db: AppDatabase) {
         val wallet = db.walletDao().getOnce() ?: return
         db.walletDao().upsert(wallet.copy(cash = wallet.cash + Balance.LOT_SELL_PRICE))
         db.transactionDao().insert(
-            TransactionEntity(kind = "INCOME", category = "lot_sale", amount = Balance.LOT_SELL_PRICE)
+            insertTx(kind = "INCOME", category = "lot_sale", amount = Balance.LOT_SELL_PRICE)
         )
         db.buildingDao().deleteByPlotId(plotId)
     }
@@ -688,7 +762,7 @@ class GameRepository(private val db: AppDatabase) {
             )
         )
         db.transactionDao().insert(
-            TransactionEntity(kind = "EXPENSE", category = "shop_purchase", amount = item.price)
+            insertTx(kind = "EXPENSE", category = "shop_purchase", amount = item.price)
         )
         updatePlayQuests(pet.xp + item.xpReward)
     }
@@ -705,13 +779,36 @@ class GameRepository(private val db: AppDatabase) {
                 val wallet = db.walletDao().getOnce() ?: continue
                 db.walletDao().upsert(wallet.copy(cash = wallet.cash + quest.reward))
                 db.transactionDao().insert(
-                    TransactionEntity(kind = "INCOME", category = "quest_reward", amount = quest.reward)
+                    insertTx(kind = "INCOME", category = "quest_reward", amount = quest.reward)
                 )
             }
         }
     }
 
     // --- Цели ---
+    /** Полный сброс профиля: все таблицы чистим и засеиваем заново. */
+    suspend fun resetProfile() {
+        db.clearAllTables()
+        ensureSeed()
+    }
+
+    /** Демо-режим: карманная сумма на новый день (источник daily_allowance). */
+    suspend fun demoDailyAllowance() {
+        val w = db.walletDao().getOnce() ?: return
+        db.walletDao().upsert(w.copy(cash = w.cash + Balance.DEMO_DAILY_ALLOWANCE))
+        db.transactionDao().insert(
+            insertTx(kind = "INCOME", category = "daily_allowance", amount = Balance.DEMO_DAILY_ALLOWANCE)
+        )
+    }
+
+    /** Сделать цель активной (текущей): ровно одна активная цель. */
+    suspend fun setActiveGoal(goalId: Int) {
+        val goal = db.goalDao().getById(goalId) ?: return
+        db.goalDao().clearActive()
+        db.goalDao().upsert(goal.copy(isActive = true))
+    }
+
+    /** Откладывание в цель: деньги снимаются ИЗ КОПИЛКИ (savePlan/saveFact). */
     suspend fun addToGoal(goalId: Int, amount: Int) {
         val goals = db.goalDao().observeAll().first()
         val goal = goals.find { it.id == goalId } ?: return
@@ -734,23 +831,25 @@ class GameRepository(private val db: AppDatabase) {
 
         db.walletDao().upsert(updated)
         val updatedGoal = goal.copy(
-            currentAmount = GameRules.capGoalDeposit(goal.currentAmount, goal.targetAmount, amount)
+            currentAmount = GameRules.capGoalDeposit(goal.currentAmount, goal.targetAmount, amount),
+            completed = goal.completed || goal.currentAmount + amount >= goal.targetAmount
         )
         db.goalDao().upsert(updatedGoal)
         db.transactionDao().insert(
-            TransactionEntity(kind = "EXPENSE", category = "goal_deposit", amount = amount)
+            insertTx(kind = "EXPENSE", category = "goal_deposit", amount = amount)
         )
     }
 
+    /** Снятие с цели: деньги возвращаются В КОПИЛКУ (savePlan), а не в мешок. */
     suspend fun withdrawFromGoal(goalId: Int, amount: Int) {
         val goals = db.goalDao().observeAll().first()
         val goal = goals.find { it.id == goalId } ?: return
         val newAmount = GameRules.spend(goal.currentAmount, amount) ?: return
         val wallet = db.walletDao().getOnce() ?: return
-        db.walletDao().upsert(wallet.copy(cash = wallet.cash + amount, saveFact = wallet.saveFact - amount))
-        db.goalDao().upsert(goal.copy(currentAmount = newAmount))
+        db.walletDao().upsert(wallet.copy(savePlan = wallet.savePlan + amount, saveFact = wallet.saveFact - amount))
+        db.goalDao().upsert(goal.copy(currentAmount = newAmount, completed = false))
         db.transactionDao().insert(
-            TransactionEntity(kind = "INCOME", category = "goal_withdraw", amount = amount)
+            insertTx(kind = "INCOME", category = "goal_withdraw", amount = amount)
         )
     }
 }

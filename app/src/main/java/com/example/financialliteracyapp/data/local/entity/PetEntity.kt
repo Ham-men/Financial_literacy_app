@@ -17,5 +17,8 @@ data class PetEntity(
     val level: Int = 1,          // 1=Малыш, 2=Подросток, 3=Хозяин ларька
     val xp: Int = 0,             // опыт развлечений (игрушки) → уровень развлечений 1..5
     val x: Float = 0f,           // позиция на карте (пиксели)
-    val y: Float = 0f
+    val y: Float = 0f,
+    val successfulDays: Int = 0, // дни, закрытые по плану (план-факт)
+    val mandatoryDays: Int = 0,  // дни с обязательными расходами (еда/лечение)
+    val totalSaved: Int = 0      // всего накоплено в копилке и целях (₡)
 )

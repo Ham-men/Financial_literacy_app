@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -30,6 +31,7 @@ fun ProductsInteriorScreen(
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
     val prefs = remember { AppContainer.prefs(context) }
+    val verticalActions = LocalConfiguration.current.screenWidthDp < LocalConfiguration.current.screenHeightDp
 
     val building by repo.observeBuildings().collectAsState(initial = emptyList())
     val stock = building.firstOrNull { it.id == buildingId }?.stock ?: 0
@@ -100,12 +102,17 @@ fun ProductsInteriorScreen(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Bottom
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    Text(
+                        "на полках: $stock 🥤",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF6D4C00)
+                    )
                     Button(
                         onClick = onOpenSuppliers,
                         modifier = Modifier
@@ -119,43 +126,14 @@ fun ProductsInteriorScreen(
                     ) {
                         Text("📦 Товар", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
-                    Text(
-                        "на полках: $stock 🥤",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF6D4C00)
-                    )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = onOpenCashier,
-                        enabled = !hired,
-                        modifier = Modifier
-                            .height(40.dp)
-                            .padding(horizontal = 8.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (hired) Color(0xFFB0BEC5) else Color(0xFF007BB5),
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text(if (hired) "🧾 Касса недоступна" else "🧾 Касса", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Button(
-                        onClick = onOpenHire,
-                        modifier = Modifier
-                            .height(40.dp)
-                            .padding(horizontal = 8.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF2196F3),
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text(if (hired) "👤 Сотрудник" else "👤 Нанять", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
+                ShopActionButtons(
+                    vertical = verticalActions,
+                    hired = hired,
+                    onOpenCashier = onOpenCashier,
+                    onOpenHire = onOpenHire
+                )
             }
         }
     }

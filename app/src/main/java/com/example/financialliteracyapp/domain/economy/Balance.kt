@@ -23,6 +23,9 @@ object Balance {
     const val LOT_PRICE = 300
     const val LOT_SELL_PRICE = 200
 
+    /** Демо-режим: ежедневная карманная сумма, чтобы показывать игру без долгого накопления. */
+    const val DEMO_DAILY_ALLOWANCE = 200
+
     const val COIN_DENOM = 50
     const val SAVE_INTEREST_PERCENT = 5
 

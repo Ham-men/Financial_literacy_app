@@ -85,6 +85,10 @@ private fun QuestItem(quest: QuestEntity) {
                 fontWeight = FontWeight.Bold, color = Accent)
         }
         Spacer(Modifier.height(8.dp))
+        if (quest.description.isNotBlank()) {
+            Text(quest.description, fontSize = 13.sp, color = TextPrimary)
+            Spacer(Modifier.height(6.dp))
+        }
         Text(topicLabel, fontSize = 12.sp, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         LinearProgressIndicator(

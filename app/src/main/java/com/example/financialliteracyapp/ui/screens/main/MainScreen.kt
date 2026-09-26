@@ -1,5 +1,6 @@
 package com.example.financialliteracyapp.ui.screens.main
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -25,19 +27,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.financialliteracyapp.data.AppContainer
 import com.example.financialliteracyapp.domain.economy.Balance
 import com.example.financialliteracyapp.domain.economy.GameRules
-import com.example.financialliteracyapp.ui.components.Chip
-import com.example.financialliteracyapp.ui.components.StatBar
 import com.example.financialliteracyapp.ui.theme.*
-import com.example.financialliteracyapp.ui.navigation.Routes
 import kotlinx.coroutines.launch
 
 @Composable
 fun MainScreen(
-    onOpenMap: () -> Unit,
-    onOpenKiosk: () -> Unit,
-    onOpenProgress: () -> Unit,
-    onOpenReference: () -> Unit,
-    onOpenAdult: () -> Unit
+    onOpenAppearance: () -> Unit
 ) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
@@ -49,7 +44,6 @@ fun MainScreen(
 
     val pet by vm.pet.collectAsState()
     val wallet by vm.wallet.collectAsState()
-    val activeQuest by vm.activeQuest.collectAsState(initial = null)
     val currentGoal by vm.currentGoal.collectAsState(initial = null)
 
     val hunger = pet?.hunger ?: 70
@@ -89,7 +83,6 @@ fun MainScreen(
     val planSet = needPlan + wantPlan + savePlan > 0
     val needAvailable = if (planSet) needPlan + cash else cash
 
-    var showMenu by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     Column(
@@ -116,7 +109,22 @@ fun MainScreen(
             }
         }
 
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(4.dp))
+
+        // Блок цели (остальные блоки убраны — банки видны в HUD TimeBankBar)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val goal = currentGoal
+            InfoChip(
+                "🎯",
+                if (goal != null) "Цель: ${goal.title} ${goal.currentAmount}/${goal.targetAmount}" else "Цель: нет цели"
+            )
+        }
+
+        Spacer(Modifier.height(4.dp))
 
         // Window at top center
         Box(
@@ -125,23 +133,23 @@ fun MainScreen(
         ) {
             Box(
                 modifier = Modifier
-                    .width(96.dp)
-                    .height(96.dp)
+                    .width(76.dp)
+                    .height(76.dp)
                     .background(
                         brush = Brush.linearGradient(
                             colors = listOf(Color(0xFF87CEEB), Color(0xFF7CFC00)),
                             start = Offset.Zero,
-                            end = Offset(0f, 96f)
+                            end = Offset(0f, 76f)
                         )
                     )
-                    .border(width = 4.dp, color = Color(0xFF6B4C3A), shape = RoundedCornerShape(4.dp)),
+                    .border(width = 3.dp, color = Color(0xFF6B4C3A), shape = RoundedCornerShape(4.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text("🪟", fontSize = 40.sp)
+                Text("🪟", fontSize = 32.sp)
             }
         }
 
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(4.dp))
 
         // Custom pet on rug - left side, Bed right side
         Row(
@@ -156,8 +164,8 @@ fun MainScreen(
                 // Rug
                 Box(
                     modifier = Modifier
-                        .width(130.dp)
-                        .height(46.dp)
+                        .width(112.dp)
+                        .height(38.dp)
                         .background(Color(0xFF5C3A21))
                         .clip(RoundedCornerShape(50.dp))
                         .border(width = 3.dp, color = Color(0xFFD2B48C))
@@ -165,13 +173,13 @@ fun MainScreen(
                 // Character on rug: фон (подушка) + тело + аксессуар
                 Box(
                     modifier = Modifier
-                        .offset(y = (-38).dp)
-                        .size(64.dp)
+                        .offset(y = (-32).dp)
+                        .size(56.dp)
                         .background(
                             Brush.linearGradient(
                                 colors = listOf(Color(0xFFFFF3E0), Color(0xFFFFE0B2)),
                                 start = Offset.Zero,
-                                end = Offset(0f, 64f)
+                                end = Offset(0f, 56f)
                             ),
                             RoundedCornerShape(14.dp)
                         )
@@ -179,28 +187,28 @@ fun MainScreen(
                         .padding(4.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(backgrounds[petBg], fontSize = 16.sp)
-                    Row(Modifier.offset(y = 6.dp)) {
-                        Text(bodyTypes[petBody], fontSize = 28.sp)
+                    Text(backgrounds[petBg], fontSize = 14.sp)
+                    Row(Modifier.offset(y = 5.dp)) {
+                        Text(bodyTypes[petBody], fontSize = 24.sp)
                         if (accessories[petAcc].isNotBlank()) {
-                            Text(accessories[petAcc], fontSize = 14.sp)
+                            Text(accessories[petAcc], fontSize = 12.sp)
                         }
                     }
                 }
                 // Badge настроения
                 Text(
                     stateEmoji,
-                    fontSize = 16.sp,
-                    modifier = Modifier.offset(x = 40.dp, y = (-52).dp)
+                    fontSize = 14.sp,
+                    modifier = Modifier.offset(x = 34.dp, y = (-44).dp)
                 )
             }
 
             // Bed right side (not clickable — sleep via button below)
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("🛏️", fontSize = 52.sp, modifier = Modifier
+                Text("🛏️", fontSize = 44.sp, modifier = Modifier
                     .graphicsLayer { rotationZ = -5f }
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(2.dp))
                 Button(
                     onClick = { vm.sleep() },
                     enabled = GameRules.canSleep(gameMinute),
@@ -211,13 +219,13 @@ fun MainScreen(
                         disabledContentColor = Color(0xFF5C6BC0)
                     ),
                     shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.height(38.dp)
+                    modifier = Modifier.height(34.dp)
                 ) {
-                    Text("💤 Спать — новый день", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("💤 Спать — новый день", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
                 Text(
                     if (GameRules.canSleep(gameMinute)) "Доступно сейчас" else "Спать: 18:00–23:00",
-                    fontSize = 9.sp,
+                    fontSize = 8.sp,
                     fontWeight = FontWeight.Bold,
                     color = if (GameRules.canSleep(gameMinute)) Color(0xFF2E7D32) else TextSecondary,
                     textAlign = TextAlign.Center
@@ -227,10 +235,10 @@ fun MainScreen(
 
         // Сообщение о сне (список_scene)
         sleepMessage?.let { msg ->
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(2.dp))
             Text(
                 msg,
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1565C0),
                 textAlign = TextAlign.Center,
@@ -238,47 +246,108 @@ fun MainScreen(
             )
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(6.dp))
 
-        // Feed + Heal buttons at bottom center
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp).padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        // Button row at bottom center: feed, heal, appearance (в портрете — в столбик, чтобы всё было видно)
+        val feedButton: @Composable () -> Unit = {
             Button(
                 onClick = { scope.launch { vm.feed() } },
                 enabled = needAvailable >= Balance.FEED_COST,
                 modifier = Modifier
-                    .height(44.dp)
-                    .padding(horizontal = 6.dp),
+                    .height(40.dp)
+                    .padding(horizontal = 4.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFFF9800),
                     contentColor = Color.White
                 ),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("🍖 Покормить — ${Balance.FEED_COST}₡", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("🍖 Корм — ${Balance.FEED_COST}₡", fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
-
+        }
+        val healButton: @Composable () -> Unit = {
             Button(
                 onClick = { scope.launch { vm.heal() } },
                 enabled = needAvailable >= Balance.HEAL_COST,
                 modifier = Modifier
-                    .height(44.dp)
-                    .padding(horizontal = 6.dp),
+                    .height(40.dp)
+                    .padding(horizontal = 4.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF4CAF50),
                     contentColor = Color.White
                 ),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("💊 Лечение — ${Balance.HEAL_COST}₡", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("💊 Лечение — ${Balance.HEAL_COST}₡", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        val appearanceButton: @Composable () -> Unit = {
+            Button(
+                onClick = onOpenAppearance,
+                modifier = Modifier
+                    .height(40.dp)
+                    .padding(horizontal = 4.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF7E57C2),
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text("🎨 Внешний вид", fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
         }
 
-        Spacer(Modifier.height(8.dp))
+        val configuration = LocalConfiguration.current
+        if (configuration.screenWidthDp < configuration.screenHeightDp) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp).padding(bottom = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                feedButton()
+                healButton()
+                appearanceButton()
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp).padding(bottom = 4.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                feedButton()
+                healButton()
+                appearanceButton()
+            }
+        }
+
+        Spacer(Modifier.height(6.dp))
+    }
+}
+
+@Composable
+private fun RowScope.InfoChip(icon: String, text: String) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = Color(0xFFE0F7FA),
+        border = BorderStroke(1.dp, Color(0xFF80DEEA)),
+        modifier = Modifier
+            .weight(1f)
+            .padding(horizontal = 2.dp)
+    ) {
+        Text(
+            text = "$icon $text",
+            fontSize = 8.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            modifier = Modifier
+                .padding(horizontal = 4.dp, vertical = 4.dp)
+                .fillMaxWidth()
+        )
     }
 }

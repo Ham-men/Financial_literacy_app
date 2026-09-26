@@ -24,7 +24,7 @@ import com.example.financialliteracyapp.ui.theme.*
 
 /** Комната развлечений: игрушки дают Финни опыт → уровень растит ставку копилки. */
 @Composable
-fun EntertainmentScreen(onBack: () -> Unit) {
+fun EntertainmentScreen() {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
     val vm: EntertainmentViewModel = viewModel(factory = EntertainmentViewModel.factory(repo))
@@ -129,7 +129,6 @@ fun EntertainmentScreen(onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(16.dp))
-        BigActionButton("← Назад", PrimaryDark, Modifier.fillMaxWidth(), onClick = onBack)
         Spacer(Modifier.height(24.dp))
     }
 }

@@ -52,6 +52,19 @@ object GameRules {
     fun playInterestPercent(level: Int): Int =
         Balance.SAVE_INTEREST_PERCENT + (level.coerceIn(1, MAX_PLAY_LEVEL) - 1)
 
+    // --- Правило: «успешный день» (план-факт) ---
+    /** День считается успешным, если затраты по каждой банке ≤ выделенному плану
+     *  и что-то отложено в копилку (привычка накопления). testable. */
+    fun daySuccess(
+        needPlan: Int, wantPlan: Int, savePlan: Int,
+        needFact: Int, wantFact: Int, saveFact: Int
+    ): Boolean {
+        val needOk = needPlan == 0 || needFact <= needPlan
+        val wantOk = wantPlan == 0 || wantFact <= wantPlan
+        val saveOk = savePlan == 0 || saveFact <= savePlan
+        return needOk && wantOk && saveOk && savePlan > 0
+    }
+
     // --- Правило: копилка (цель) не уходит в минус и не превышает цель ---
     fun capGoalDeposit(current: Int, target: Int, amount: Int): Int =
         (current + amount).coerceAtMost(target)
@@ -69,6 +82,17 @@ object GameRules {
         3 -> "Хозяин ларька"
         else -> "Малыш"
     }
+
+    // --- Правило: рост по привычкам (обязательные дни, план-факт, накопления) ---
+    fun growthLevel(totalSaved: Int, successfulDays: Int, mandatoryDays: Int): Int = when {
+        totalSaved >= 800 && mandatoryDays >= 6 && successfulDays >= 4 -> 3
+        totalSaved >= 200 && mandatoryDays >= 3 && successfulDays >= 2 -> 2
+        else -> 1
+    }
+
+    /** Обязательные расходы дня: еда (pet_food) или лечение (pet_heal). */
+    fun isMandatoryCategory(category: String): Boolean =
+        category == "pet_food" || category == "pet_heal"
 
     // --- Правило: начисление всегда с источником (категория дохода из белого списка) ---
     val KNOWN_INCOME_SOURCES = setOf(

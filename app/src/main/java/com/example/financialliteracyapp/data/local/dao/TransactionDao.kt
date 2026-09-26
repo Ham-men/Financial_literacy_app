@@ -20,6 +20,9 @@ interface TransactionDao {
     @Query("SELECT COALESCE(SUM(amount), 0) FROM `transactions` WHERE kind = 'EXPENSE' AND day = :day")
     suspend fun expenseOfDay(day: Int): Int
 
+    @Query("SELECT DISTINCT category FROM `transactions` WHERE day = :day")
+    suspend fun categoriesOfDay(day: Int): List<String>
+
     @Insert
     suspend fun insert(tx: TransactionEntity): Long
 }

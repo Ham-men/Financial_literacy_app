@@ -27,6 +27,12 @@ object GameClock {
     @Volatile private var started = false
     private var scope: CoroutineScope? = null
     private var prefs: UserPrefs? = null
+    @Volatile private var demoMode = false
+
+    /** Демо-режим: часы идут в 5 раз быстрее (1 игр.мин = 0.2 сек). */
+    fun setDemoMode(on: Boolean) {
+        demoMode = on
+    }
 
     /** Запускает один раз: восстанавливает время из DataStore и тикает 1 игр.мин/сек. */
     fun start(context: Context) {
@@ -37,12 +43,13 @@ object GameClock {
         scope!!.launch {
             val savedMinute = prefs!!.gameMinute.first()
             val savedEpoch = prefs!!.gameClockEpoch.first()
+            demoMode = prefs!!.demoMode.first()
             // 1 игровая минута = 1 реальная секунда: добегаем до сохранённого времени, пока игра была закрыта.
             val elapsed = ((System.currentTimeMillis() - savedEpoch) / 1_000L).toInt().coerceAtLeast(0)
             _minute.value = (savedMinute + elapsed).coerceAtMost(GameRules.BED_TIME_MINUTE)
             var saveCounter = 0
             while (true) {
-                delay(1_000)
+                delay(if (demoMode) 200 else 1_000)
                 val cur = _minute.value
                 if (cur >= GameRules.BED_TIME_MINUTE) continue // 23:00 — время остановилось
                 _minute.value = cur + 1

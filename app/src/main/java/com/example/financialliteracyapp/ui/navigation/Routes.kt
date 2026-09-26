@@ -29,5 +29,6 @@ object Routes {
     const val BUILDING = "building"
     const val CONSTRUCTION = "construction"
     const val AUTO_SERVICE = "auto_service"
+    const val APPEARANCE = "appearance"
     const val CHEATS = "cheats"
 }

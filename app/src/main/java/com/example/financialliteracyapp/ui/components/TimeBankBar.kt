@@ -41,20 +41,22 @@ fun TimeBankBar(
                 "${GameRules.dateForDay(day)}  ${GameRules.timeLabel(gameMinute)}",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = Color.Black,
+                maxLines = 1
             )
             Text(
-                if (GameRules.isShopOpen(gameMinute)) "🟢 Рабочий день (10:00–18:00)"
-                else if (GameRules.canSleep(gameMinute)) "🌙 Вечер — можно спать (18:00–23:00)"
-                else "😴 Пора спать (время остановлено)",
+                if (GameRules.isShopOpen(gameMinute)) "🟢 Рабочий день"
+                else if (GameRules.canSleep(gameMinute)) "🌙 Вечер — можно спать"
+                else "😴 Пора спать",
                 fontSize = 10.sp,
-                color = if (GameRules.isShopOpen(gameMinute)) Color(0xFF2E7D32) else TextSecondary
+                color = if (GameRules.isShopOpen(gameMinute)) Color(0xFF2E7D32) else TextSecondary,
+                maxLines = 1
             )
         }
         BankDot("нужное", need, spend, SpendBank.NEED)
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(6.dp))
         BankDot("желаемое", want, spend, SpendBank.WANT)
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(6.dp))
         BankDot("копилка", save, spend, SpendBank.SAVE)
     }
 }

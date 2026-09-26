@@ -53,7 +53,7 @@ private fun buildingName(type: String) = when (type) {
 private val cityMap = listOf(
     // Row 1 — ДОМ слева, ЛАРЁК справа от него, свободный участок
     Plot(id = "h1", emoji = "🏠", isHome = true),
-    Plot(id = "b2", isComplex = true, miniGrid = listOf("🏠", "🏠", "🏠", "🏠"), buildingType = "PRODUCTS"),
+    Plot(id = "b2", buildingType = "PRODUCTS"),
     Plot(id = "s1", isForSale = true),
     // Row 2 — участки под будущие магазины
     Plot(id = "s2", isForSale = true),

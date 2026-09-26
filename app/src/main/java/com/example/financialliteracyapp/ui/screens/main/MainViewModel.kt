@@ -22,6 +22,7 @@ class MainViewModel(
     val goals = repo.observeGoals().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val quests = repo.observeQuests().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val day = prefs.currentDay.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1)
+    val demoMode = prefs.demoMode.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
     val hiredCount = prefs.hiredBuildings
         .map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
@@ -31,7 +32,9 @@ class MainViewModel(
     val sleepMessage: StateFlow<String?> = _sleepMessage.asStateFlow()
 
     val currentGoal = goals.map { goalsList ->
-        goalsList.find { !it.completed && it.currentAmount < it.targetAmount } ?: goalsList.firstOrNull()
+        goalsList.find { it.isActive && !it.completed && it.currentAmount < it.targetAmount }
+            ?: goalsList.find { !it.completed && it.currentAmount < it.targetAmount }
+            ?: goalsList.firstOrNull()
     }
     val activeQuest = quests.map { questsList ->
         questsList.find { !it.completed } ?: questsList.firstOrNull()
@@ -44,16 +47,24 @@ class MainViewModel(
     fun sleep(onDone: () -> Unit = {}) {
         viewModelScope.launch {
             val minute = GameClock.minute.value
-            if (!GameRules.canSleep(minute)) {
+            if (!demoMode.value && !GameRules.canSleep(minute)) {
                 _sleepMessage.value = "Магазины ещё работают. Спать можно с 18:00 до 23:00."
                 return@launch
             }
             val cur = day.value
+            repo.closePeriod()
+            val levelBefore = repo.petLevelOnce()
             prefs.setCurrentDay(cur + 1)
             GameClock.newDay()
+            repo.syncDay(cur + 1)
             repo.payCashierSalary(hiredCount.value)
+            if (demoMode.value) repo.demoDailyAllowance()
             repo.resetDay()
-            _sleepMessage.value = "Сладких снов! День ${cur + 1} начался в 10:00."
+            val levelAfter = repo.petLevelOnce()
+            val growth = if (levelAfter > levelBefore)
+                " 🎉 Финни вырос! Теперь он ${GameRules.growthStageName(levelAfter)}."
+            else ""
+            _sleepMessage.value = "Сладких снов! День ${cur + 1} начался в 10:00.$growth"
             onDone()
         }
     }

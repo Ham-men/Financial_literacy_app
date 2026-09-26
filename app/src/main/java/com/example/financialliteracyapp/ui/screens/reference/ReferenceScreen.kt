@@ -12,12 +12,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.financialliteracyapp.ui.components.BigActionButton
 import com.example.financialliteracyapp.ui.theme.*
 
 /** Справочник терминов (День 21, §18 сюжета 3). Каждый термин — 1 предложение + картинка. */
 @Composable
-fun ReferenceScreen(onBack: () -> Unit) {
+fun ReferenceScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -39,9 +38,6 @@ fun ReferenceScreen(onBack: () -> Unit) {
                 ReferenceItem(term)
             }
         }
-
-        Spacer(Modifier.height(12.dp))
-        BigActionButton("← Назад", PrimaryDark, Modifier.fillMaxWidth(), onClick = onBack)
     }
 }
 

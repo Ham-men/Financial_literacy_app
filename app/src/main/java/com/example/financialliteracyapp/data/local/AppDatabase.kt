@@ -10,6 +10,7 @@ import com.example.financialliteracyapp.data.local.dao.BotDao
 import com.example.financialliteracyapp.data.local.dao.BuildingDao
 import com.example.financialliteracyapp.data.local.dao.CatalogItemDao
 import com.example.financialliteracyapp.data.local.dao.GoalDao
+import com.example.financialliteracyapp.data.local.dao.PeriodDao
 import com.example.financialliteracyapp.data.local.dao.PetDao
 import com.example.financialliteracyapp.data.local.dao.QuestDao
 import com.example.financialliteracyapp.data.local.dao.TransactionDao
@@ -18,14 +19,15 @@ import com.example.financialliteracyapp.data.local.entity.BotEntity
 import com.example.financialliteracyapp.data.local.entity.BuildingEntity
 import com.example.financialliteracyapp.data.local.entity.CatalogItemEntity
 import com.example.financialliteracyapp.data.local.entity.GoalEntity
+import com.example.financialliteracyapp.data.local.entity.PeriodEntity
 import com.example.financialliteracyapp.data.local.entity.PetEntity
 import com.example.financialliteracyapp.data.local.entity.QuestEntity
 import com.example.financialliteracyapp.data.local.entity.TransactionEntity
 import com.example.financialliteracyapp.data.local.entity.WalletEntity
 
 @Database(
-    entities = [PetEntity::class, WalletEntity::class, BuildingEntity::class, TransactionEntity::class, BotEntity::class, GoalEntity::class, QuestEntity::class, CatalogItemEntity::class],
-    version = 6,
+    entities = [PetEntity::class, WalletEntity::class, BuildingEntity::class, TransactionEntity::class, BotEntity::class, GoalEntity::class, QuestEntity::class, CatalogItemEntity::class, PeriodEntity::class],
+    version = 9,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -37,6 +39,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun goalDao(): GoalDao
     abstract fun questDao(): QuestDao
     abstract fun catalogItemDao(): CatalogItemDao
+    abstract fun periodDao(): PeriodDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
@@ -47,7 +50,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "mini-economy.db"
-                ).addMigrations(MIGRATION_4_5, MIGRATION_5_6).fallbackToDestructiveMigration().build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9).fallbackToDestructiveMigration().build().also { INSTANCE = it }
             }
 
         /** v5: купленные магазины на карте — новая колонка plotId у зданий. */
@@ -67,6 +70,42 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("UPDATE catalog_items SET xpReward = 2, description = 'Яркий бантик для красивых фото' WHERE title = 'Бантик'")
                 db.execSQL("UPDATE catalog_items SET xpReward = 4, description = 'Картина, чтобы любоваться на рыб' WHERE title = 'Картина на стену'")
                 db.execSQL("UPDATE catalog_items SET xpReward = 5, description = 'Торт на праздничный день' WHERE title = 'Праздничный торт'")
+            }
+        }
+
+        /** v7: план-факт дня — новая таблица периодов (итоги одного игрового дня). */
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `periods` (" +
+                        "`day` INTEGER NOT NULL PRIMARY KEY, " +
+                        "`needPlan` INTEGER NOT NULL, " +
+                        "`wantPlan` INTEGER NOT NULL, " +
+                        "`savePlan` INTEGER NOT NULL, " +
+                        "`needFact` INTEGER NOT NULL, " +
+                        "`wantFact` INTEGER NOT NULL, " +
+                        "`saveFact` INTEGER NOT NULL, " +
+                        "`income` INTEGER NOT NULL, " +
+                        "`expense` INTEGER NOT NULL, " +
+                        "`success` INTEGER NOT NULL)"
+                )
+            }
+        }
+
+        /** v8: активная цель — goals.isActive (текущая цель на собственный экран). */
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE goals ADD COLUMN isActive INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("UPDATE goals SET isActive = 1 WHERE rowid = (SELECT MIN(rowid) FROM goals)")
+            }
+        }
+
+        /** v9: счётчики роста Финни — успешные/обязательные дни и сумма накоплений. */
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE pet ADD COLUMN successfulDays INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE pet ADD COLUMN mandatoryDays INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE pet ADD COLUMN totalSaved INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

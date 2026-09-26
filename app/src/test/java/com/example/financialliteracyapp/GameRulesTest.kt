@@ -305,4 +305,77 @@ class GameRulesTest {
         assertEquals("02.01.2020", GameRules.dateForDay(2))
         assertEquals("31.12.2020", GameRules.dateForDay(366))
     }
+
+    // --- Правило: «успешный день» (план-факт) ---
+
+    @Test
+    fun daySuccess_true_whenSavedAndStayedInPlan() {
+        assertTrue(
+            GameRules.daySuccess(
+                needPlan = 200, wantPlan = 60, savePlan = 50,
+                needFact = 150, wantFact = 60, saveFact = 50
+            )
+        )
+    }
+
+    @Test
+    fun daySuccess_false_whenPlanMissed() {
+        // потрачено больше запланированного в «желаемое»
+        assertFalse(
+            GameRules.daySuccess(
+                needPlan = 200, wantPlan = 60, savePlan = 50,
+                needFact = 150, wantFact = 80, saveFact = 50
+            )
+        )
+    }
+
+    @Test
+    fun daySuccess_false_whenNothingSaved() {
+        // в копилку ничего не отложено — день без накопления
+        assertFalse(
+            GameRules.daySuccess(
+                needPlan = 200, wantPlan = 0, savePlan = 0,
+                needFact = 150, wantFact = 0, saveFact = 0
+            )
+        )
+    }
+
+    @Test
+    fun daySuccess_ignoresUnusedPlan() {
+        // банка не запланирована вовсе — по ней план не оценивается
+        assertTrue(
+            GameRules.daySuccess(
+                needPlan = 100, wantPlan = 0, savePlan = 40,
+                needFact = 100, wantFact = 0, saveFact = 40
+            )
+        )
+    }
+
+    // --- Правило: рост Финни по привычкам ---
+
+    @Test
+    fun growthLevel_1_whenNoHabits() {
+        assertEquals(1, GameRules.growthLevel(0, 0, 0))
+        assertEquals(1, GameRules.growthLevel(199, 2, 3))
+    }
+
+    @Test
+    fun growthLevel_2_whenHabitsAndSavings() {
+        assertEquals(2, GameRules.growthLevel(200, 2, 3))
+        assertEquals(2, GameRules.growthLevel(799, 4, 6))
+    }
+
+    @Test
+    fun growthLevel_3_whenTopHabitsAndSavings() {
+        assertEquals(3, GameRules.growthLevel(800, 4, 6))
+        assertEquals(3, GameRules.growthLevel(1500, 10, 10))
+    }
+
+    @Test
+    fun isMandatoryCategory_foodAndHeal() {
+        assertTrue(GameRules.isMandatoryCategory("pet_food"))
+        assertTrue(GameRules.isMandatoryCategory("pet_heal"))
+        assertFalse(GameRules.isMandatoryCategory("shop_purchase"))
+        assertFalse(GameRules.isMandatoryCategory("salary"))
+    }
 }

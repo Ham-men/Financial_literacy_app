@@ -32,6 +32,8 @@ class UserPrefs(private val context: Context) {
     val gameClockEpoch: Flow<Long> = context.dataStore.data.map { it[GAME_CLOCK_EPOCH] ?: System.currentTimeMillis() }
     /** Последняя обработанная минута пассивного дохода нанятых сотрудников (-1 = ещё не было). */
     val lastPassiveMinute: Flow<Int> = context.dataStore.data.map { it[LAST_PASSIVE_MINUTE] ?: -1 }
+    /** Демо-режим для презентации: ускоренные часы, свободный сон, ежедневная карманная сумма. */
+    val demoMode: Flow<Boolean> = context.dataStore.data.map { it[DEMO] ?: false }
 
     suspend fun setPetName(name: String) {
         context.dataStore.edit { it[PET_NAME] = name }
@@ -81,6 +83,15 @@ class UserPrefs(private val context: Context) {
         context.dataStore.edit { it[LAST_PASSIVE_MINUTE] = minute }
     }
 
+    suspend fun setDemoMode(on: Boolean) {
+        context.dataStore.edit { it[DEMO] = on }
+    }
+
+    /** Полный сброс настроек (новый профиль). */
+    suspend fun clear() {
+        context.dataStore.edit { it.clear() }
+    }
+
     companion object {
         private val PET_NAME = stringPreferencesKey("pet_name")
         private val SOUND = booleanPreferencesKey("sound")
@@ -93,5 +104,6 @@ class UserPrefs(private val context: Context) {
         private val GAME_MINUTE = intPreferencesKey("game_minute")
         private val GAME_CLOCK_EPOCH = longPreferencesKey("game_clock_epoch")
         private val LAST_PASSIVE_MINUTE = intPreferencesKey("last_passive_minute")
+        private val DEMO = booleanPreferencesKey("demo_mode")
     }
 }

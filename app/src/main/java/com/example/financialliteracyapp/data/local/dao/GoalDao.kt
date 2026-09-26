@@ -15,6 +15,12 @@ interface GoalDao {
     @Query("SELECT * FROM goals WHERE id = :id")
     suspend fun getById(id: Int): GoalEntity?
 
+    @Query("SELECT * FROM goals WHERE isActive = 1 LIMIT 1")
+    suspend fun active(): GoalEntity?
+
+    @Query("UPDATE goals SET isActive = 0")
+    suspend fun clearActive()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(goal: GoalEntity)
 

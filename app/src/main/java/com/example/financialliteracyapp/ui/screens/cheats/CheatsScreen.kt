@@ -26,8 +26,8 @@ import com.example.financialliteracyapp.ui.theme.*
 /** Читы для теста: деньги в банки, дата и время, повтор обучения. */
 @Composable
 fun CheatsScreen(
-    onBack: () -> Unit,
-    onRestartTutorial: () -> Unit
+    onRestartTutorial: () -> Unit,
+    embedded: Boolean = false
 ) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
@@ -45,19 +45,25 @@ fun CheatsScreen(
     var dayText by remember { mutableStateOf(day.toString()) }
     var timeText by remember { mutableStateOf(GameRules.timeLabel(gameMinute)) }
 
+    // embedded=true: часть скролла родителя — не делаем собственный скролл/фон.
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+        modifier = if (embedded) {
+            Modifier.fillMaxWidth()
+        } else {
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .verticalScroll(rememberScrollState())
+        }.padding(16.dp)
     ) {
-        Text("🎁 Читы — для теста",
-            style = MaterialTheme.typography.headlineMedium)
-        Text("Добавляй деньги в банки и меняй дату/время, чтобы проверить функционал",
-            fontSize = 13.sp, color = TextSecondary)
+        if (!embedded) {
+            Text("🎁 Читы — для теста",
+                style = MaterialTheme.typography.headlineMedium)
+            Text("Добавляй деньги в банки и меняй дату/время, чтобы проверить функционал",
+                fontSize = 13.sp, color = TextSecondary)
 
-        Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
+        }
 
         // Текущее состояние
         AppCard {
@@ -173,14 +179,7 @@ fun CheatsScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        Button(
-            onClick = onBack,
-            colors = ButtonDefaults.buttonColors(containerColor = Primary),
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.align(Alignment.CenterHorizontally).widthIn(min = 160.dp).height(46.dp)
-        ) {
-            Text("← Назад", fontWeight = FontWeight.Bold)
-        }
+        Spacer(Modifier.height(24.dp))
     }
 }
 

@@ -15,34 +15,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.financialliteracyapp.data.AppContainer
-import com.example.financialliteracyapp.domain.economy.Balance
+import com.example.financialliteracyapp.data.local.entity.PeriodEntity
+import com.example.financialliteracyapp.domain.economy.GameRules
 import com.example.financialliteracyapp.ui.components.AppCard
 import com.example.financialliteracyapp.ui.components.BigActionButton
 import com.example.financialliteracyapp.ui.theme.*
 
 @Composable
-fun ReportScreen(onNextDay: () -> Unit) {
+fun ReportScreen() {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
     val prefs = remember { AppContainer.prefs(context) }
     val vm: ReportViewModel = viewModel(factory = ReportViewModel.factory(repo, prefs))
-    val shop by vm.shop.collectAsState()
     val day by vm.day.collectAsState()
-    val hiredCount by vm.hiredCount.collectAsState()
+    val periods by vm.periods.collectAsState()
 
-    val price = shop?.price ?: Balance.LEMONADE_BASE_PRICE
-    val costPrice = shop?.costPrice ?: Balance.LEMONADE_COST
-    val sold = shop?.soldToday ?: 0
-    val revenue = shop?.revenueToday ?: (sold * price)
-    val cost = sold * costPrice
-    val rent = Balance.SHOP_RENT_MARKET
-    val tax = (revenue * Balance.TAX_RATE).toInt()
-    val salary = hiredCount * Balance.CASHIER_SALARY
-    val profit = revenue - cost - rent - tax - salary
-
-    val visitors = 20 // MVP: 20 ботов
-    val bought = sold
-    val leftHighPrice = (visitors - bought).coerceAtLeast(0)
+    // Главный отчёт — последний завершённый день; текущий день (ещё не закрыт) — рядом.
+    val lastPeriod = periods.lastOrNull()
+    val hasClosedPeriod = lastPeriod != null
 
     Column(
         modifier = Modifier
@@ -51,53 +41,101 @@ fun ReportScreen(onNextDay: () -> Unit) {
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        Text("📊 Отчёт дня $day",
+        val titleDay = lastPeriod?.day ?: day
+        Text("📊 Отчёт · день $titleDay (${GameRules.dateForDay(titleDay)})",
             style = MaterialTheme.typography.headlineMedium)
 
+        Spacer(Modifier.height(8.dp))
+
+        if (!hasClosedPeriod) {
+            AppCard {
+                Text("День ещё не завершён", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Spacer(Modifier.height(8.dp))
+                Text("Отчёт появится, когда закончится день: ляг спать на сцене ДОМ (18:00–23:00).",
+                    color = TextSecondary, fontSize = 14.sp)
+            }
+        } else {
+            PlanFactorCard(lastPeriod!!)
+            MoneyCard(lastPeriod!!)
+            StatusCard(lastPeriod!!, day)
+            HistoryCard(periods)
+        }
+
         Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(24.dp))
+    }
+}
 
-        AppCard {
-            Text("Итоги", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Spacer(Modifier.height(8.dp))
-            ReportRow("Выручка:", "+$revenue ₡", Primary)
-            ReportRow("Себестоимость:", "−$cost ₡", Danger)
-            ReportRow("Аренда:", "−$rent ₡", Danger)
-            ReportRow("Налог (13%):", "−$tax ₡", Danger)
-            if (hiredCount > 0) ReportRow("Зарплата сотрудников:", "−$salary ₡", Danger)
-            HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            ReportRow("Чистая прибыль:", "${if (profit >= 0) "+" else ""}$profit ₡", if (profit >= 0) Primary else Danger, big = true)
+/** План vs факт: сколько выделено в банки и сколько реально потрачено/отложено. */
+@Composable
+private fun PlanFactorCard(period: PeriodEntity) {
+    AppCard {
+        Text("План ↔ факт", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Spacer(Modifier.height(4.dp))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("Банка", Modifier.weight(1f), color = TextSecondary, fontSize = 12.sp)
+            Text("План", Modifier.width(60.dp), color = TextSecondary, fontSize = 12.sp)
+            Text("Факт", Modifier.width(60.dp), color = TextSecondary, fontSize = 12.sp)
         }
+        HorizontalDivider(Modifier.padding(vertical = 6.dp))
+        factRow("👖 Нужное", period.needPlan, period.needFact)
+        factRow("🚛 Желаемое", period.wantPlan, period.wantFact)
+        factRow("🐷 Копилка", period.savePlan, period.saveFact)
+    }
+}
 
-        Spacer(Modifier.height(12.dp))
+@Composable
+private fun factRow(label: String, plan: Int, fact: Int) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text("$plan ₡", Modifier.width(60.dp), fontSize = 14.sp, color = TextPrimary)
+        Text("$fact ₡", Modifier.width(60.dp), fontSize = 14.sp,
+            color = if (plan == 0 || fact <= plan) Primary else Danger, fontWeight = FontWeight.Bold)
+    }
+}
 
-        AppCard {
-            Text("👥 Покупатели", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Spacer(Modifier.height(8.dp))
-            ReportRow("Пришло:", "$visitors", TextPrimary)
-            ReportRow("Купило:", "$bought", TextPrimary)
-            ReportRow("Ушло (высокая цена):", "$leftHighPrice", Danger)
+@Composable
+private fun MoneyCard(period: PeriodEntity) {
+    AppCard {
+        Text("Движение денег за день", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Spacer(Modifier.height(8.dp))
+        ReportRow("Доход:", "+${period.income} ₡", Primary)
+        ReportRow("Расход:", "−${period.expense} ₡", Danger)
+        HorizontalDivider(Modifier.padding(vertical = 8.dp))
+        val bal = period.balance
+        ReportRow("Итог:", "${if (bal >= 0) "+" else ""}$bal ₡", if (bal >= 0) Primary else Danger, big = true)
+    }
+}
+
+@Composable
+private fun StatusCard(period: PeriodEntity, currentDay: Int) {
+    AppCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(if (period.success) "🎉" else "📋", fontSize = 32.sp)
+            Spacer(Modifier.width(12.dp))
+            Text(
+                if (period.success) "План соблюдён! Что-то осталось и в копилке — так растёт твоя цель."
+                else "День был потрачен без плана: разложи деньги по банкам и попробуй откладывать в копилку.",
+                fontSize = 14.sp, color = TextSecondary
+            )
         }
+    }
+}
 
-        Spacer(Modifier.height(12.dp))
-
-        AppCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("🦡", fontSize = 40.sp)
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    if (profit > 0) "Молодец! Прибыль $profit ₡. Попробуй цену ${price - 1} ₡ — покупателей станет больше."
-                    else "Убыток $profit ₡. Снизь цену или закупи дешевле у Сороки (2 ₡).",
-                    fontSize = 14.sp, color = TextSecondary
-                )
+@Composable
+private fun HistoryCard(periods: List<PeriodEntity>) {
+    val lastFew = periods.takeLast(7).reversed()
+    AppCard {
+        Text("История", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Spacer(Modifier.height(6.dp))
+        lastFew.forEach { p ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("день ${p.day}", Modifier.weight(1f), fontSize = 13.sp,
+                    color = if (p.success) Primary else TextSecondary, fontWeight = if (p.success) FontWeight.Bold else FontWeight.Normal)
+                Text("доход +${p.income}", Modifier.width(110.dp), fontSize = 12.sp, color = TextSecondary)
+                Text("в копилку ${p.savePlan}₡", fontSize = 12.sp, color = TextPrimary, fontWeight = FontWeight.Bold)
             }
         }
-
-        Spacer(Modifier.height(16.dp))
-
-        BigActionButton("▶ Следующий день", Primary,
-            Modifier.fillMaxWidth(), onClick = { vm.nextDay(onNextDay) })
-
-        Spacer(Modifier.height(24.dp))
     }
 }
 
