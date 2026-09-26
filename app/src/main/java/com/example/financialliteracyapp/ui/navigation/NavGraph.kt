@@ -21,7 +21,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,6 +43,7 @@ import com.example.financialliteracyapp.data.AppContainer
 import com.example.financialliteracyapp.data.clock.GameClock
 import com.example.financialliteracyapp.data.local.entity.BuildingEntity
 import com.example.financialliteracyapp.domain.economy.GameRules
+import com.example.financialliteracyapp.game.PassiveSales
 import com.example.financialliteracyapp.ui.components.NavSidebar
 import com.example.financialliteracyapp.ui.components.TimeBankBar
 import com.example.financialliteracyapp.ui.screens.adult.AdultScreen
@@ -65,6 +69,8 @@ import com.example.financialliteracyapp.ui.screens.progress.ProgressScreen
 import com.example.financialliteracyapp.ui.screens.reference.ReferenceScreen
 import com.example.financialliteracyapp.ui.screens.report.ReportScreen
 import com.example.financialliteracyapp.ui.screens.shop.AccountingScreen
+import com.example.financialliteracyapp.ui.tutorial.TutorialOverlay
+import com.example.financialliteracyapp.ui.tutorial.TutorialViewModel
 
 /** Полноэкранные экраны без боковой панели: онбординг и чистые мини-игры. */
 private val HIDDEN_BAR_ROUTES = setOf(
@@ -82,6 +88,7 @@ fun AppNavGraph(
     val context = LocalContext.current
     val prefs = remember { AppContainer.prefs(context) }
     val onboardingDone by prefs.onboardingDone.collectAsState(initial = null)
+    val tutorialDone by prefs.tutorialDone.collectAsState(initial = null)
 
     var effectiveStart by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(onboardingDone) {
@@ -105,10 +112,48 @@ fun AppNavGraph(
     val repo = remember { AppContainer.repo(context) }
     val wallet by repo.observeWallet().collectAsState(initial = null)
     val day by prefs.currentDay.collectAsState(initial = 1)
+    val buildings: List<BuildingEntity> by repo.observeBuildingsByDistrict("Рынок").collectAsState(initial = emptyList())
 
     // Игровые часы: 1 игр.мин = 1 реал.сек
-    LaunchedEffect(Unit) { GameClock.start(context) }
+    LaunchedEffect(Unit) {
+        GameClock.start(context)
+        PassiveSales.start(context)
+    }
     val gameMinute by GameClock.minute.collectAsState()
+
+    // ===== Обучение при первом запуске =====
+    val tutorialVm: TutorialViewModel = viewModel()
+    val tutorialActive by tutorialVm.active.collectAsState()
+    val tutorialStep by tutorialVm.currentStep.collectAsState()
+    val tutorialIndex by tutorialVm.index.collectAsState()
+    val tutorialSteps by tutorialVm.steps.collectAsState()
+    val scope = rememberCoroutineScope()
+
+    // Автозапуск после онбординга при первом входе в игру
+    LaunchedEffect(start, tutorialDone) {
+        if (start == Routes.MAIN && tutorialDone == false) {
+            tutorialVm.start()
+        }
+    }
+
+    // Автонавигация по сценам обучения
+    LaunchedEffect(tutorialActive, tutorialStep) {
+        val step = tutorialStep
+        if (!tutorialActive || step == null) return@LaunchedEffect
+        val productsBuilding = buildings.firstOrNull { it.type == "PRODUCTS" } ?: buildings.firstOrNull()
+        val fullRoute = when (step.route) {
+            Routes.SUPPLIERS, Routes.CASHIER -> productsBuilding?.let { "${step.route}/${it.id}" }
+            else -> step.route
+        } ?: return@LaunchedEffect
+        val pattern = when (step.route) {
+            Routes.SUPPLIERS, Routes.CASHIER -> "${step.route}/{buildingId}"
+            else -> step.route
+        }
+        val current = navController.currentDestination?.route
+        if (current != pattern && current != step.route) {
+            navigateToTab(navController, fullRoute)
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxSize()) {
@@ -195,7 +240,7 @@ fun AppNavGraph(
                         onExit = { navController.navigate(Routes.MAIN) },
                         onOpenSuppliers = { navController.navigate("${Routes.SUPPLIERS}/${kBuilding.id}") },
                         onOpenCashier = { navController.navigate("${Routes.CASHIER}/${kBuilding.id}") },
-                        onOpenHire = { navController.navigate(Routes.HIRE) }
+                        onOpenHire = { navController.navigate("${Routes.HIRE}/${kBuilding.id}") }
                     )
                 }
             }
@@ -218,28 +263,28 @@ fun AppNavGraph(
                         onExit = { navController.popBackStack() },
                         onOpenSuppliers = { navController.navigate("${Routes.SUPPLIERS}/$buildingId") },
                         onOpenCashier = { navController.navigate("${Routes.CASHIER}/$buildingId") },
-                        onOpenHire = { navController.navigate(Routes.HIRE) }
+                        onOpenHire = { navController.navigate("${Routes.HIRE}/$buildingId") }
                     )
                     "CONSTRUCTION" -> ConstructionInteriorScreen(
                         buildingId = buildingId,
                         onExit = { navController.popBackStack() },
                         onOpenSuppliers = { navController.navigate("${Routes.SUPPLIERS}/$buildingId") },
                         onOpenCashier = { navController.navigate("${Routes.CASHIER}/$buildingId") },
-                        onOpenHire = { navController.navigate(Routes.HIRE) }
+                        onOpenHire = { navController.navigate("${Routes.HIRE}/$buildingId") }
                     )
                     "AUTO_SERVICE" -> AutoServiceInteriorScreen(
                         buildingId = buildingId,
                         onExit = { navController.popBackStack() },
                         onOpenSuppliers = { navController.navigate("${Routes.SUPPLIERS}/$buildingId") },
                         onOpenCashier = { navController.navigate("${Routes.CASHIER}/$buildingId") },
-                        onOpenHire = { navController.navigate(Routes.HIRE) }
+                        onOpenHire = { navController.navigate("${Routes.HIRE}/$buildingId") }
                     )
                     else -> ProductsInteriorScreen(
                         buildingId = buildingId,
                         onExit = { navController.popBackStack() },
                         onOpenSuppliers = { navController.navigate("${Routes.SUPPLIERS}/$buildingId") },
                         onOpenCashier = { navController.navigate("${Routes.CASHIER}/$buildingId") },
-                        onOpenHire = { navController.navigate(Routes.HIRE) }
+                        onOpenHire = { navController.navigate("${Routes.HIRE}/$buildingId") }
                     )
                 }
             }
@@ -253,8 +298,26 @@ fun AppNavGraph(
             composable(Routes.PRICER) {
                 PricerGame(onFinish = { navController.popBackStack() })
             }
-            composable(Routes.HIRE) {
-                HireScreen(onBack = { navController.popBackStack() })
+            composable(
+                route = "${Routes.HIRE}/{buildingId}",
+                arguments = listOf(navArgument("buildingId") { type = NavType.LongType; defaultValue = 0L })
+            ) { backStackEntry ->
+                val bid = backStackEntry.arguments?.getLong("buildingId") ?: 0L
+                val context = LocalContext.current
+                val repo = remember { AppContainer.repo(context) }
+                val buildings: List<BuildingEntity> by repo.observeBuildingsByDistrict("Рынок").collectAsState(initial = emptyList())
+                val bld = buildings.firstOrNull { it.id == bid }
+                HireScreen(
+                    onBack = { navController.popBackStack() },
+                    buildingId = bid,
+                    buildingName = bld?.let {
+                        when (it.type) {
+                            "CONSTRUCTION" -> "стройка"
+                            "AUTO_SERVICE" -> "СТО"
+                            else -> "ларёк"
+                        }
+                    } ?: "магазин"
+                )
             }
             composable(
                 route = "${Routes.CASHIER}/{buildingId}",
@@ -286,7 +349,16 @@ fun AppNavGraph(
                 EntertainmentScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.CHEATS) {
-                CheatsScreen(onBack = { navController.popBackStack() })
+                CheatsScreen(
+                    onBack = { navController.popBackStack() },
+                    onRestartTutorial = {
+                        scope.launch { prefs.setTutorialDone(false) }
+                        tutorialVm.start()
+                        navController.navigate(Routes.MAIN) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                )
             }
             composable(Routes.REPORT) {
                 ReportScreen(
@@ -315,7 +387,7 @@ fun AppNavGraph(
                         onExit = { navController.popBackStack() },
                         onOpenSuppliers = { navController.navigate("${Routes.SUPPLIERS}/${building.id}") },
                         onOpenCashier = { navController.navigate("${Routes.CASHIER}/${building.id}") },
-                        onOpenHire = { navController.navigate(Routes.HIRE) }
+                        onOpenHire = { navController.navigate("${Routes.HIRE}/${building.id}") }
                     )
                 }
             }
@@ -330,7 +402,7 @@ fun AppNavGraph(
                         onExit = { navController.popBackStack() },
                         onOpenSuppliers = { navController.navigate("${Routes.SUPPLIERS}/${building.id}") },
                         onOpenCashier = { navController.navigate("${Routes.CASHIER}/${building.id}") },
-                        onOpenHire = { navController.navigate(Routes.HIRE) }
+                        onOpenHire = { navController.navigate("${Routes.HIRE}/${building.id}") }
                     )
                 }
             }
@@ -359,13 +431,44 @@ fun AppNavGraph(
                 )
             }
         }
+
+        // Обучение при первом запуске — поверх всех сцен
+        val step = tutorialStep
+        if (tutorialActive && step != null) {
+            TutorialOverlay(
+                step = step,
+                index = tutorialIndex,
+                total = tutorialSteps.size,
+                onPrev = { tutorialVm.prev() },
+                onNext = {
+                    if (tutorialIndex >= tutorialSteps.lastIndex) {
+                        scope.launch { prefs.setTutorialDone(true) }
+                        tutorialVm.finish()
+                        navController.navigate(Routes.MAIN) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    } else {
+                        tutorialVm.next()
+                    }
+                },
+                onFinish = {
+                    scope.launch { prefs.setTutorialDone(true) }
+                    tutorialVm.finish()
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
+        }
     }
 }
 private fun navigateToTab(navController: NavHostController, route: String) {
     if (navController.currentDestination?.route == route) return
     navController.navigate(route) {
-        popUpTo(Routes.MAIN) { saveState = true }
+        // Всегда возвращаемся к корню (MAIN) и открываем сцену заново,
+        // без restoreState — иначе из открытого в карте магазина кнопка
+        // «КАРТА» возвращала не на карту, а в восстановленное состояние магазина.
+        popUpTo(Routes.MAIN)
         launchSingleTop = true
-        restoreState = true
     }
 }

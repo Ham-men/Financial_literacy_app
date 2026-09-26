@@ -404,7 +404,7 @@ fun KioskScreen(
             // --- Учёт ларька (касса/склад/P&L) ---
             5 -> AccountingScreen(onBack = {}, embedded = true, onOpenReport = onOpenReport)
             // --- Найм кассира ---
-            6 -> HireScreen(onBack = { tab = 0 }, embedded = true)
+            6 -> HireScreen(onBack = { tab = 0 })
         }
     }
 }

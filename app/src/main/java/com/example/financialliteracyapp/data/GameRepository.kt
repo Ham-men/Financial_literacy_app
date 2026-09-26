@@ -22,6 +22,8 @@ class GameRepository(private val db: AppDatabase) {
     fun observePet() = db.petDao().observe()
     fun observeWallet() = db.walletDao().observe()
     fun observeBuildings() = db.buildingDao().observeAll()
+
+    fun observeBuildingById(id: Long) = db.buildingDao().observeById(id)
     fun observeBuildingsByDistrict(district: String) = db.buildingDao().observeByDistrict(district)
     fun observeTransactions() = db.transactionDao().observeAll()
     fun observeBots() = db.botDao().observeAll()
@@ -78,7 +80,8 @@ class GameRepository(private val db: AppDatabase) {
             db.walletDao().upsert(WalletEntity())
         }
         if (db.buildingDao().observeAll().first().isEmpty()) {
-            // Стартовые здания на районе Рынок: «Продукты», «СТО», «Стройматериалы»
+            // Стартовое здание на районе Рынок: только «Продукты» (лаpёк).
+            // СТО/Стройматериалы игрок построит сам, купив участок на карте.
             db.buildingDao().upsert(
                 BuildingEntity(
                     type = "PRODUCTS",
@@ -92,56 +95,13 @@ class GameRepository(private val db: AppDatabase) {
                     dirtLevel = 30
                 )
             )
-            db.buildingDao().upsert(
-                BuildingEntity(
-                    type = "AUTO_SERVICE",
-                    district = "Рынок",
-                    x = 13, y = 5,
-                    level = 1,
-                    stock = 30,
-                    price = 30,
-                    costPrice = 12,
-                    cash = 400,
-                    dirtLevel = 10
-                )
-            )
-            db.buildingDao().upsert(
-                BuildingEntity(
-                    type = "CONSTRUCTION",
-                    district = "Рынок",
-                    x = 9, y = 10,
-                    level = 1,
-                    stock = 40,
-                    price = 15,
-                    costPrice = 6,
-                    cash = 150,
-                    dirtLevel = 20
-                )
-            )
-        } else {
-            // Миграция: добавляем здание Стройматериалы, если его ещё нет в старой БД
-            val existing = db.buildingDao().observeAll().first()
-            if (existing.none { it.type == "CONSTRUCTION" }) {
-                db.buildingDao().upsert(
-                    BuildingEntity(
-                        type = "CONSTRUCTION",
-                        district = "Рынок",
-                        x = 9, y = 10,
-                        level = 1,
-                        stock = 40,
-                        price = 15,
-                        costPrice = 6,
-                        cash = 150,
-                        dirtLevel = 20
-                    )
-                )
-            }
         }
         val allBuildings = db.buildingDao().observeAll().first()
         val productsId = allBuildings.firstOrNull { it.type == "PRODUCTS" }?.id ?: -1L
         val autoServiceId = allBuildings.firstOrNull { it.type == "AUTO_SERVICE" }?.id ?: -1L
         if (db.botDao().count() == 0) {
-            // 2 работника в «Продуктах» (зарплата), 1 механик в СТО, остальные — покупатели.
+            // 2 работника в «Продуктах» (зарплата), остальные — покупатели.
+            // Механик (ENGINEER) пока без рабочего здания — встанет, когда игрок построит СТО.
             val bots = listOf(
                 BotEntity(id = 1L, type = "WORKER",  salary = 100, wallet = 200, loyalty = 0.6f,
                     hasCar = false, workBuildingId = productsId, state = "HOME"),
@@ -409,6 +369,54 @@ class GameRepository(private val db: AppDatabase) {
         }
     }
 
+    /**
+     * Одна пассивная продажа нанятого сотрудника (v5): списывает 1 ед. товара со склада
+     * и кладёт выручку В КАССУ КОНКРЕТНОГО МАГАЗИНА (building.cash), а не в мешок игрока.
+     * Забрать деньги можно на сцене «Найм сотрудника» кнопкой «Забрать деньги».
+     */
+    suspend fun passiveSaleInBuilding(buildingId: Long): Boolean {
+        val building = db.buildingDao().observeById(buildingId).first() ?: return false
+        if (building.stock < 1) return false
+        val revenue = building.price
+        val cost = building.costPrice
+        db.buildingDao().upsert(
+            building.copy(
+                stock = building.stock - 1,
+                cash = building.cash + revenue,
+                soldToday = building.soldToday + 1,
+                revenueTotal = building.revenueTotal + revenue
+            )
+        )
+        if (revenue > 0) {
+            db.transactionDao().insert(
+                TransactionEntity(kind = "INCOME", category = "bot_sales", amount = revenue, buildingId = buildingId)
+            )
+        }
+        if (cost > 0) {
+            db.transactionDao().insert(
+                TransactionEntity(kind = "EXPENSE", category = "cogs", amount = cost, buildingId = buildingId)
+            )
+        }
+        return true
+    }
+
+    /**
+     * «Забрать деньги» со сцены «Найм сотрудника»: вся касса конкретного магазина (building.cash)
+     * уходит в мешок игрока (cash), откуда её можно распределить по банкам на сцене ПЛАН.
+     */
+    suspend fun withdrawBuildingCash(buildingId: Long): Int {
+        val building = db.buildingDao().observeById(buildingId).first() ?: return 0
+        val amount = building.cash
+        if (amount <= 0) return 0
+        db.buildingDao().upsert(building.copy(cash = 0))
+        val w = db.walletDao().getOnce() ?: return 0
+        db.walletDao().upsert(w.copy(cash = w.cash + amount))
+        db.transactionDao().insert(
+            TransactionEntity(kind = "INCOME", category = "shop_withdraw", amount = amount, buildingId = buildingId)
+        )
+        return amount
+    }
+
     suspend fun updateDirtLevel(buildingId: Long, dirt: Int) {
         val building = db.buildingDao().observeById(buildingId).first() ?: return
         db.buildingDao().upsert(building.copy(dirtLevel = dirt.coerceIn(0, 100)))
@@ -600,12 +608,13 @@ class GameRepository(private val db: AppDatabase) {
         }
     }
 
-    // --- Зарплата кассира (совместимость со старым кодом) ---
-    suspend fun payCashierSalary(hired: Boolean) {
-        if (!hired) return
-        if (!spendFromNeed(Balance.CASHIER_SALARY)) return
+    // --- Зарплата нанятых сотрудников (1 на здание, v5.0) ---
+    suspend fun payCashierSalary(count: Int) {
+        if (count <= 0) return
+        val total = Balance.CASHIER_SALARY * count
+        if (!spendFromNeed(total)) return
         db.transactionDao().insert(
-            TransactionEntity(kind = "EXPENSE", category = "salary", amount = Balance.CASHIER_SALARY)
+            TransactionEntity(kind = "EXPENSE", category = "salary", amount = total)
         )
     }
 

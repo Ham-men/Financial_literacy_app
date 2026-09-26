@@ -49,56 +49,56 @@ private fun buildingName(type: String) = when (type) {
     else -> "Магазин"
 }
 
-/** Карта района «Рынок»: ДОМ, 3 магазина игрока, свободные (серые) и продающиеся участки. */
+/** Карта района «Рынок»: ДОМ и ЛАРЁК в верхнем ряду, остальное — свободные (серые) и продающиеся участки (СТО/стройка покупаются позже). */
 private val cityMap = listOf(
-    // Row 1
+    // Row 1 — ДОМ слева, ЛАРЁК справа от него, свободный участок
     Plot(id = "h1", emoji = "🏠", isHome = true),
-    Plot(id = "s1", isForSale = true),
-    Plot(id = "s2", isForSale = true),
-    // Row 2 — магазины игрока в этом районе
-    Plot(id = "b1", buildingType = "AUTO_SERVICE"),
     Plot(id = "b2", isComplex = true, miniGrid = listOf("🏠", "🏠", "🏠", "🏠"), buildingType = "PRODUCTS"),
-    Plot(id = "b3", buildingType = "CONSTRUCTION"),
+    Plot(id = "s1", isForSale = true),
+    // Row 2 — участки под будущие магазины
+    Plot(id = "s2", isForSale = true),
+    Plot(id = "s3", isForSale = true),
+    Plot(id = "s4", isForSale = true),
     // Row 3
     Plot(id = "g1", emoji = "🌳"),
-    Plot(id = "s3", isForSale = true),
+    Plot(id = "s5", isForSale = true),
     Plot(id = "g2", emoji = "🏢"),
     // Row 4
-    Plot(id = "s4", isForSale = true),
+    Plot(id = "s6", isForSale = true),
     Plot(id = "g3", emoji = "🏠"),
     Plot(id = "g4", emoji = "🌳"),
     // Row 5
     Plot(id = "g5", emoji = "🏢"),
-    Plot(id = "s5", isForSale = true),
-    Plot(id = "s6", isForSale = true),
-    // Row 6
     Plot(id = "s7", isForSale = true),
+    Plot(id = "s8", isForSale = true),
+    // Row 6
+    Plot(id = "s9", isForSale = true),
     Plot(id = "g6", emoji = "🏭"),
     Plot(id = "g7", emoji = "🌳"),
     // Row 7
     Plot(id = "g8", emoji = "🏠"),
-    Plot(id = "s8", isForSale = true),
+    Plot(id = "s10", isForSale = true),
     Plot(id = "g9", emoji = "🏢"),
     // Row 8
-    Plot(id = "s9", isForSale = true),
+    Plot(id = "s11", isForSale = true),
     Plot(id = "g10", emoji = "🌳"),
-    Plot(id = "s10", isForSale = true),
+    Plot(id = "s12", isForSale = true),
     // Row 9
     Plot(id = "g11", emoji = "🏢"),
-    Plot(id = "s11", isForSale = true),
+    Plot(id = "s13", isForSale = true),
     Plot(id = "g12", emoji = "🏠"),
     // Row 10
-    Plot(id = "s12", isForSale = true),
+    Plot(id = "s14", isForSale = true),
     Plot(id = "g13", emoji = "🏭"),
-    Plot(id = "s13", isForSale = true),
+    Plot(id = "s15", isForSale = true),
     // Row 11
     Plot(id = "g14", emoji = "🌳"),
-    Plot(id = "s14", isForSale = true),
+    Plot(id = "s16", isForSale = true),
     Plot(id = "g15", emoji = "🏢"),
     // Row 12
-    Plot(id = "s15", isForSale = true),
-    Plot(id = "g16", emoji = "🏠"),
-    Plot(id = "s16", isForSale = true),
+    Plot(id = "s17", isForSale = true),
+    Plot(id = "g16", emoji = "🌳"),
+    Plot(id = "s18", isForSale = true),
 )
 
 @Composable

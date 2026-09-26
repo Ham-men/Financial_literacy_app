@@ -1,7 +1,6 @@
 package com.example.financialliteracyapp.ui.screens.building
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.border
@@ -17,10 +16,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.financialliteracyapp.data.AppContainer
 import com.example.financialliteracyapp.ui.theme.*
-import com.example.financialliteracyapp.ui.navigation.Routes
-import kotlinx.coroutines.launch
 
-/** Стройматериалы: витрина в стиле СТО — две полки с инструментами слева, работники справа. */
+/** Стройматериалы: витрина в стиле СТО — две полки с инструментами слева, работник справа.
+ *  Сотрудник не показывается, пока не нанят; при найме «Касса» блокируется (работает сам). */
 @Composable
 fun ConstructionInteriorScreen(
     buildingId: Long,
@@ -31,125 +29,130 @@ fun ConstructionInteriorScreen(
 ) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
-    val scope = rememberCoroutineScope()
+    val prefs = remember { AppContainer.prefs(context) }
 
-    val wallet by repo.observeWallet().collectAsState(initial = null)
-    val cash = wallet?.cash ?: 500
     val building by repo.observeBuildings().collectAsState(initial = emptyList())
     val stock = building.firstOrNull { it.id == buildingId }?.stock ?: 0
+    val price = building.firstOrNull { it.id == buildingId }?.price ?: 15
+    val hiredBuildings by prefs.hiredBuildings.collectAsState(initial = emptySet())
+    val hired = buildingId in hiredBuildings
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .padding(16.dp)
-    ) {
-        // Door at top center
-        Box(
+    Box(Modifier.fillMaxSize().background(Color.White)) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(22.dp)
+                .fillMaxSize()
                 .background(Color.White)
-                .border(width = 2.dp, color = Color(0xFFCCCCCC))
-                .padding(top = 10.dp),
-            contentAlignment = Alignment.TopCenter
-        ) {}
-
-        Spacer(Modifier.height(16.dp))
-
-        // Two tool shelves (left) + workers (right) — same layout as STO
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(16.dp)
         ) {
-            // Left area - tool shelves with stock
-            Column(
+            // Door at top center
+            Box(
                 modifier = Modifier
-                    .width(108.dp)
-                    .padding(start = 6.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
-            ) {
-                ToolShelfBay(stock = stock)
-                ToolShelfBay(stock = stock)
-            }
+                    .fillMaxWidth()
+                    .height(22.dp)
+                    .background(Color.White)
+                    .border(width = 2.dp, color = Color(0xFFCCCCCC))
+                    .padding(top = 10.dp),
+                contentAlignment = Alignment.TopCenter
+            ) {}
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(12.dp))
 
-            // Right area - workers and labels
-            Column(
-                modifier = Modifier
-                    .width(92.dp)
-                    .padding(end = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(56.dp)
-            ) {
-                WorkerWithLabel(label = "нанять работника")
-                WorkerWithLabel(label = "нанять работника")
-            }
-        }
-
-        Spacer(Modifier.weight(1f))
-
-        // Bottom controls: товар (left), касса + нанять (right)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-// Buy goods button + stock label to the right
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = onOpenSuppliers,
-                modifier = Modifier
-                    .height(44.dp)
-                    .padding(horizontal = 8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF8D6E63),
-                    contentColor = Color.White
-                ),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text("📦 Товар", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
-            Text(
-                "на полках: $stock 🧰",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF6D4C00)
-            )
-        }
-
-            // Cashier + hire buttons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = onOpenCashier,
-                    modifier = Modifier
-                        .height(44.dp)
-                        .padding(horizontal = 8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF007BB5),
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(10.dp)
+            // Scene area (weight): полки слева + сотрудник справа; поверх — авто-касса при найме
+            Box(Modifier.fillMaxWidth().weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("🧾 Касса", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    // Left area - tool shelves with stock
+                    Column(
+                        modifier = Modifier
+                            .width(108.dp)
+                            .padding(start = 6.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        ToolShelfBay(stock = stock)
+                        ToolShelfBay(stock = stock)
+                    }
+
+                    Spacer(Modifier.weight(1f))
+
+                    // Right area - hired worker (или пусто до найма)
+                    HiredWorkerSlot(hired = hired, workerEmoji = "👷", label = if (hired) "продавец" else "место")
                 }
-                Button(
-                    onClick = onOpenHire,
-                    modifier = Modifier
-                        .height(44.dp)
-                        .padding(horizontal = 8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF2196F3),
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(10.dp)
+
+                if (hired) {
+                    AutoCashierAnimation(
+                        buildingId = buildingId,
+                        stock = stock,
+                        price = price,
+                        goodsEmoji = "🧰",
+                        workerEmoji = "👷",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(4.dp))
+
+            // Bottom controls
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("👤 Нанять", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Button(
+                        onClick = onOpenSuppliers,
+                        modifier = Modifier
+                            .height(40.dp)
+                            .padding(horizontal = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF8D6E63),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("📦 Товар", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Text(
+                        "на полках: $stock 🧰",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF6D4C00)
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = onOpenCashier,
+                        enabled = !hired,
+                        modifier = Modifier
+                            .height(40.dp)
+                            .padding(horizontal = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (hired) Color(0xFFB0BEC5) else Color(0xFF007BB5),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(if (hired) "🧾 Касса недоступна" else "🧾 Касса", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Button(
+                        onClick = onOpenHire,
+                        modifier = Modifier
+                            .height(40.dp)
+                            .padding(horizontal = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF2196F3),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(if (hired) "👤 Сотрудник" else "👤 Нанять", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
@@ -162,19 +165,18 @@ private fun ToolShelfBay(stock: Int) {
     Box(
         modifier = Modifier
             .width(110.dp)
-            .height(92.dp)
+            .height(84.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp)
+                .height(66.dp)
                 .align(Alignment.BottomCenter)
                 .background(Color(0xFFA07A55))
                 .border(width = 3.dp, color = Color(0xFF7A5A3A))
                 .padding(4.dp),
             contentAlignment = Alignment.Center
         ) {
-            // Tool grid 2x2
             Column(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -183,29 +185,32 @@ private fun ToolShelfBay(stock: Int) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("🔧", fontSize = 18.sp)
-                    Text("🪛", fontSize = 18.sp)
+                    Text("🔧", fontSize = 17.sp)
+                    Text("🪛", fontSize = 17.sp)
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("🗜️", fontSize = 18.sp)
-                    Text("🔨", fontSize = 18.sp)
+                    Text("🗜️", fontSize = 17.sp)
+                    Text("🔨", fontSize = 17.sp)
                 }
             }
         }
-        // Shelf label moved next to «Товар» button in the bottom controls
     }
 }
 
 @Composable
-private fun WorkerWithLabel(label: String) {
+private fun HiredWorkerSlot(hired: Boolean, workerEmoji: String, label: String) {
     Column(
         horizontalAlignment = Alignment.End,
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        Text("👷", fontSize = 34.sp)
+        Text(
+            if (hired) workerEmoji else "🪑",
+            fontSize = if (hired) 30.sp else 24.sp,
+            color = if (hired) Color.Unspecified else Color(0xFFBDBDBD)
+        )
         Text(label, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.Center)
     }
 }

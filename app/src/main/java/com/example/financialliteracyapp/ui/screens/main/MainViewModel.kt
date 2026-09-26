@@ -22,7 +22,9 @@ class MainViewModel(
     val goals = repo.observeGoals().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val quests = repo.observeQuests().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val day = prefs.currentDay.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1)
-    val cashierHired = prefs.cashierHired.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    val hiredCount = prefs.hiredBuildings
+        .map { it.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
     val gameMinute = GameClock.minute.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GameRules.WORK_DAY_START_MINUTE)
 
     private val _sleepMessage = MutableStateFlow<String?>(null)
@@ -49,7 +51,7 @@ class MainViewModel(
             val cur = day.value
             prefs.setCurrentDay(cur + 1)
             GameClock.newDay()
-            repo.payCashierSalary(cashierHired.value)
+            repo.payCashierSalary(hiredCount.value)
             repo.resetDay()
             _sleepMessage.value = "Сладких снов! День ${cur + 1} начался в 10:00."
             onDone()

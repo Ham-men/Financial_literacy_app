@@ -2,10 +2,6 @@ package com.example.financialliteracyapp.ui.screens.onboarding
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
@@ -64,8 +60,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 16.dp)
-            .verticalScroll(rememberScrollState()),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         when (currentStep) {
@@ -117,19 +112,18 @@ private fun DecisionStep(
     onNext: () -> Unit
 ) {
     var selectedDecisionLocal by remember { mutableStateOf<String?>(null) }
-    
+
     Column(
         modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text("Как ты будешь делить деньги?",
-            fontSize = 24.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(8.dp))
-        Text("Выбери одну банку — это твой приоритет на старте",
-            fontSize = 16.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            fontSize = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(2.dp))
+        Text("Выбери одну банку — твой приоритет на старте",
+            fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             textAlign = TextAlign.Center)
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(8.dp))
 
         decisions.forEach { decision ->
             DecisionCard(
@@ -137,10 +131,10 @@ private fun DecisionStep(
                 selected = selectedDecisionLocal == decision.id,
                 onClick = { onDecisionSelected(decision.id); selectedDecisionLocal = decision.id }
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(6.dp))
         }
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(8.dp))
         BigActionButton(
             text = "Далее →",
             color = Primary,
@@ -159,8 +153,6 @@ private fun DecisionCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = if (selected) decision.color.copy(alpha = 0.15f)
@@ -168,23 +160,21 @@ private fun DecisionCard(
         ),
         border = if (selected)
             androidx.compose.foundation.BorderStroke(2.dp, decision.color) else null,
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(decision.emoji, fontSize = 32.sp)
-                Spacer(Modifier.width(12.dp))
-                Text(decision.title,
-                    Modifier.weight(1f),
-                    fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                if (selected) {
-                    androidx.compose.material3.Text(text = "✓", color = decision.color, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                }
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(decision.emoji, fontSize = 24.sp)
+            Spacer(Modifier.width(10.dp))
+            Text(decision.title,
+                Modifier.weight(1f),
+                fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            if (selected) {
+                androidx.compose.material3.Text(text = "✓", color = decision.color, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
-            Spacer(Modifier.height(8.dp))
-            Text(decision.desc,
-                fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
         }
+        Text(decision.desc,
+            fontSize = 11.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 7.dp))
     }
 }
 
@@ -200,55 +190,64 @@ private fun CustomizeStep(
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text("Создай своего Финни",
-            fontSize = 24.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(8.dp))
+            fontSize = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(2.dp))
         Text("Тело × Аксессуар × Фон = 9 уникальных комбинаций",
-            fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-            textAlign = TextAlign.Center)
-        Spacer(Modifier.height(32.dp))
+            fontSize = 11.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(6.dp))
 
-        // Preview
-        Box(
-            modifier = Modifier
-                .size(200.dp)
-                .background(Color(0xFFF5F5F5), RoundedCornerShape(24.dp))
+        // Preview слева + селекторы справа — чтобы влезало в landscape
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+            // Preview
+            Box(
+                modifier = Modifier
+                    .width(130.dp)
+                    .height(150.dp)
+                    .background(Color(0xFFF5F5F5), RoundedCornerShape(16.dp))
             ) {
-                Text(backgrounds[selectedBackground], fontSize = 120.sp)
-                Spacer(Modifier.height(-40.dp))
-                Row(horizontalArrangement = Arrangement.Center) {
-                    Text(bodyTypes[selectedBody], fontSize = 80.sp)
-                    if (accessories[selectedAccessory].isNotBlank()) {
-                        Text(accessories[selectedAccessory], fontSize = 40.sp)
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(backgrounds[selectedBackground], fontSize = 44.sp)
+                    Spacer(Modifier.height(-12.dp))
+                    Row(horizontalArrangement = Arrangement.Center) {
+                        Text(bodyTypes[selectedBody], fontSize = 34.sp)
+                        if (accessories[selectedAccessory].isNotBlank()) {
+                            Text(accessories[selectedAccessory], fontSize = 18.sp)
+                        }
                     }
+                }
+            }
+
+            Spacer(Modifier.width(10.dp))
+
+            // Селекторы
+            Column(Modifier.weight(1f)) {
+                SelectorRow("Тело", bodyTypes, selectedBody, onBodyChange) { text, sel ->
+                    Text(text, fontSize = 22.sp)
+                }
+                Spacer(Modifier.height(6.dp))
+                SelectorRow("Аксессуар", accessories.map { if (it.isBlank()) "нет" else it }, selectedAccessory, onAccessoryChange) { text, sel ->
+                    if (text == "нет") Text("➖", fontSize = 14.sp) else Text(text, fontSize = 14.sp)
+                }
+                Spacer(Modifier.height(6.dp))
+                SelectorRow("Фон", backgrounds, selectedBackground, onBackgroundChange) { text, sel ->
+                    Text(text, fontSize = 16.sp)
                 }
             }
         }
 
-        Spacer(Modifier.height(32.dp))
-
-        // Body selector
-        SelectorRow("Тело", bodyTypes, selectedBody, onBodyChange) { text, sel ->
-            Text(text, fontSize = 48.sp)
-        }
-        Spacer(Modifier.height(16.dp))
-        SelectorRow("Аксессуар", accessories.map { if (it.isBlank()) "нет" else it }, selectedAccessory, onAccessoryChange) { text, sel ->
-            if (text == "нет") Text("➖", fontSize = 32.sp) else Text(text, fontSize = 32.sp)
-        }
-        Spacer(Modifier.height(16.dp))
-        SelectorRow("Фон", backgrounds, selectedBackground, onBackgroundChange) { text, sel ->
-            Text(text, fontSize = 32.sp)
-        }
-
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(6.dp))
         BigActionButton(text = "Далее →", color = Primary, modifier = Modifier.fillMaxWidth()) { onNext() }
     }
 }
@@ -262,19 +261,19 @@ private fun SelectorRow(
     content: @Composable (String, Boolean) -> Unit
 ) {
     Column(Modifier.fillMaxWidth()) {
-        Text(label, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
+        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(3.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             options.forEachIndexed { index, option ->
                 val isSelected = index == selected
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(80.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
                         .background(
                             if (isSelected) Primary.copy(alpha = 0.2f)
                             else MaterialTheme.colorScheme.surface
@@ -282,7 +281,7 @@ private fun SelectorRow(
                         .border(
                             if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, Primary)
                             else androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE0E0E0)),
-                            RoundedCornerShape(16.dp)
+                            RoundedCornerShape(12.dp)
                         )
                         .clickable { onChange(index) },
                     contentAlignment = Alignment.Center
@@ -308,12 +307,12 @@ private fun NameStep(
         verticalArrangement = Arrangement.Center
     ) {
         Text("Как к тебе обращаться?",
-            fontSize = 24.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(8.dp))
+            fontSize = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(2.dp))
         Text("Ник для профиля (не ФИО, не телефон)",
-            fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            fontSize = 11.sp, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             textAlign = TextAlign.Center)
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(12.dp))
 
         OutlinedTextField(
             value = nickname,
@@ -323,10 +322,8 @@ private fun NameStep(
             singleLine = true
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(10.dp))
 
-        Text("Имя Финни:", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
         OutlinedTextField(
             value = finniName,
             onValueChange = onFinniNameChange,
@@ -335,7 +332,7 @@ private fun NameStep(
             singleLine = true
         )
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(14.dp))
         BigActionButton(text = "Начать игру!", color = Primary, modifier = Modifier.fillMaxWidth()) { onFinish() }
     }
 }

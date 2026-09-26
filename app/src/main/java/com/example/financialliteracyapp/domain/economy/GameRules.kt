@@ -80,7 +80,8 @@ object GameRules {
         "bot_sales",
         "lot_sale",
         "goal_withdraw",
-        "save_interest"
+        "save_interest",
+        "shop_withdraw"
     )
 
     /** Доход обязан иметь источник; расход не ограничен. */
@@ -99,6 +100,9 @@ object GameRules {
     /** Спать можно с 18:00 до 23:00 включительно (в 23:00 время останавливается). */
     fun canSleep(gameMinute: Int): Boolean =
         gameMinute >= WORK_DAY_END_MINUTE && gameMinute <= BED_TIME_MINUTE
+
+    /** Авто-касса нанятого сотрудника: 2 бота в 10 игровых минут = 1 бот каждые 5 минут. */
+    const val AUTO_CASHIER_BOT_EVERY_MINUTES = 5
 
     /** Время остановилось в 23:00 — пора ложиться спать. */
     fun isBedtime(gameMinute: Int): Boolean = gameMinute >= BED_TIME_MINUTE

@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.financialliteracyapp.domain.economy.GameRules
 import kotlinx.coroutines.flow.Flow
@@ -20,10 +21,17 @@ class UserPrefs(private val context: Context) {
     val soundEnabled: Flow<Boolean> = context.dataStore.data.map { it[SOUND] ?: true }
     val difficulty: Flow<Int> = context.dataStore.data.map { it[DIFFICULTY] ?: 1 }
     val onboardingDone: Flow<Boolean> = context.dataStore.data.map { it[ONBOARDING] ?: false }
+    val tutorialDone: Flow<Boolean> = context.dataStore.data.map { it[TUTORIAL] ?: false }
     val currentDay: Flow<Int> = context.dataStore.data.map { it[DAY] ?: 1 }
     val cashierHired: Flow<Boolean> = context.dataStore.data.map { it[CASHIER] ?: false }
+    /** Здания, в которых нанят сотрудник (1 на здание). Хранятся id-строки. */
+    val hiredBuildings: Flow<Set<Long>> = context.dataStore.data.map { prefs ->
+        (prefs[HIRED_BUILDINGS] ?: emptySet()).mapNotNull { it.toLongOrNull() }.toSet()
+    }
     val gameMinute: Flow<Int> = context.dataStore.data.map { it[GAME_MINUTE] ?: GameRules.WORK_DAY_START_MINUTE }
     val gameClockEpoch: Flow<Long> = context.dataStore.data.map { it[GAME_CLOCK_EPOCH] ?: System.currentTimeMillis() }
+    /** Последняя обработанная минута пассивного дохода нанятых сотрудников (-1 = ещё не было). */
+    val lastPassiveMinute: Flow<Int> = context.dataStore.data.map { it[LAST_PASSIVE_MINUTE] ?: -1 }
 
     suspend fun setPetName(name: String) {
         context.dataStore.edit { it[PET_NAME] = name }
@@ -41,12 +49,25 @@ class UserPrefs(private val context: Context) {
         context.dataStore.edit { it[ONBOARDING] = done }
     }
 
+    suspend fun setTutorialDone(done: Boolean) {
+        context.dataStore.edit { it[TUTORIAL] = done }
+    }
+
     suspend fun setCurrentDay(day: Int) {
         context.dataStore.edit { it[DAY] = day }
     }
 
     suspend fun setCashierHired(hired: Boolean) {
         context.dataStore.edit { it[CASHIER] = hired }
+    }
+
+    /** Найм/увольнение сотрудника в конкретном здании (1 на здание). */
+    suspend fun setBuildingHired(buildingId: Long, hired: Boolean) {
+        context.dataStore.edit { prefs ->
+            val current = (prefs[HIRED_BUILDINGS] ?: emptySet()).toMutableSet()
+            if (hired) current.add(buildingId.toString()) else current.remove(buildingId.toString())
+            prefs[HIRED_BUILDINGS] = current
+        }
     }
 
     suspend fun setGameClock(minute: Int, epochMs: Long) {
@@ -56,14 +77,21 @@ class UserPrefs(private val context: Context) {
         }
     }
 
+    suspend fun setLastPassiveMinute(minute: Int) {
+        context.dataStore.edit { it[LAST_PASSIVE_MINUTE] = minute }
+    }
+
     companion object {
         private val PET_NAME = stringPreferencesKey("pet_name")
         private val SOUND = booleanPreferencesKey("sound")
         private val DIFFICULTY = intPreferencesKey("difficulty")
         private val ONBOARDING = booleanPreferencesKey("onboarding_done")
+        private val TUTORIAL = booleanPreferencesKey("tutorial_done")
         private val DAY = intPreferencesKey("current_day")
         private val CASHIER = booleanPreferencesKey("cashier_hired")
+        private val HIRED_BUILDINGS = stringSetPreferencesKey("hired_buildings")
         private val GAME_MINUTE = intPreferencesKey("game_minute")
         private val GAME_CLOCK_EPOCH = longPreferencesKey("game_clock_epoch")
+        private val LAST_PASSIVE_MINUTE = intPreferencesKey("last_passive_minute")
     }
 }

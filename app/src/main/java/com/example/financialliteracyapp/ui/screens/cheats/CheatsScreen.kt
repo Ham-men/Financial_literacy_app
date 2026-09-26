@@ -23,9 +23,12 @@ import com.example.financialliteracyapp.ui.components.AppCard
 import com.example.financialliteracyapp.ui.components.BigActionButton
 import com.example.financialliteracyapp.ui.theme.*
 
-/** Читы для теста: деньги в банки, дата и время. */
+/** Читы для теста: деньги в банки, дата и время, повтор обучения. */
 @Composable
-fun CheatsScreen(onBack: () -> Unit) {
+fun CheatsScreen(
+    onBack: () -> Unit,
+    onRestartTutorial: () -> Unit
+) {
     val context = LocalContext.current
     val repo = remember { AppContainer.repo(context) }
     val prefs = remember { AppContainer.prefs(context) }
@@ -158,6 +161,17 @@ fun CheatsScreen(onBack: () -> Unit) {
         }
 
         Spacer(Modifier.height(20.dp))
+
+        Button(
+            onClick = onRestartTutorial,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7B1FA2)),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.align(Alignment.CenterHorizontally).widthIn(min = 220.dp).height(46.dp)
+        ) {
+            Text("🎓 Повторить обучение", fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(Modifier.height(8.dp))
 
         Button(
             onClick = onBack,

@@ -64,6 +64,23 @@ fun MainScreen(
         else -> "Малыш"
     }
 
+    // Кастомизация из сущности: тело × аксессуар × фон (как выбрано в онбординге)
+    val petBody = pet?.bodyType ?: 0
+    val petAcc = pet?.accessory ?: 0
+    val petBg = pet?.background ?: 0
+    val bodyTypes = listOf("🦝", "🦝", "🦝")
+    val accessories = listOf("", "🧣", "🧢")
+    val backgrounds = listOf("🏪", "🌳", "🌊")
+
+    // Эмодзи самочувствия (показываем как bейдж над персонажем)
+    val stateEmoji = when {
+        hunger < 30 -> "😿"
+        energy < 30 -> "😴"
+        mood < 30 -> "🙀"
+        hunger < 60 || mood < 60 -> "😾"
+        else -> "😺"
+    }
+
     val cash = wallet?.cash ?: 500
     val needPlan = wallet?.needPlan ?: 0
     val wantPlan = wallet?.wantPlan ?: 0
@@ -71,15 +88,6 @@ fun MainScreen(
     // Бюджет «нужное»: если план разложен — банка нужное + мешок, иначе весь мешок
     val planSet = needPlan + wantPlan + savePlan > 0
     val needAvailable = if (planSet) needPlan + cash else cash
-
-    // Эмодзи Финни по состоянию
-    val petEmoji = when {
-        hunger < 30 -> "😿"
-        energy < 30 -> "😴"
-        mood < 30 -> "🙀"
-        hunger < 60 || mood < 60 -> "🦝"
-        else -> "😺"
-    }
 
     var showMenu by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -135,37 +143,56 @@ fun MainScreen(
 
         Spacer(Modifier.height(6.dp))
 
-        // Cat on rug - left side, Bed right side - more centered
+        // Custom pet on rug - left side, Bed right side
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Cat area left
+            // Pet area left
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Rug
                 Box(
                     modifier = Modifier
-                        .width(120.dp)
-                        .height(44.dp)
+                        .width(130.dp)
+                        .height(46.dp)
                         .background(Color(0xFF5C3A21))
                         .clip(RoundedCornerShape(50.dp))
                         .border(width = 3.dp, color = Color(0xFFD2B48C))
                 )
-                // Cat on rug
+                // Character on rug: фон (подушка) + тело + аксессуар
                 Box(
                     modifier = Modifier
-                        .width(50.dp)
-                        .height(50.dp)
-                        .background(Color.Black)
-                        .padding(6.dp)
-                        .offset(y = (-30).dp),
+                        .offset(y = (-38).dp)
+                        .size(64.dp)
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(Color(0xFFFFF3E0), Color(0xFFFFE0B2)),
+                                start = Offset.Zero,
+                                end = Offset(0f, 64f)
+                            ),
+                            RoundedCornerShape(14.dp)
+                        )
+                        .border(width = 2.dp, color = Color(0xFFD7CCC8), shape = RoundedCornerShape(14.dp))
+                        .padding(4.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(petEmoji, fontSize = 32.sp)
+                    Text(backgrounds[petBg], fontSize = 16.sp)
+                    Row(Modifier.offset(y = 6.dp)) {
+                        Text(bodyTypes[petBody], fontSize = 28.sp)
+                        if (accessories[petAcc].isNotBlank()) {
+                            Text(accessories[petAcc], fontSize = 14.sp)
+                        }
+                    }
                 }
+                // Badge настроения
+                Text(
+                    stateEmoji,
+                    fontSize = 16.sp,
+                    modifier = Modifier.offset(x = 40.dp, y = (-52).dp)
+                )
             }
 
             // Bed right side (not clickable — sleep via button below)
