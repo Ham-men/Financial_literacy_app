@@ -1,29 +1,28 @@
 package com.example.financialliteracyapp.ui.screens.main
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.border
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.financialliteracyapp.R
 import com.example.financialliteracyapp.data.AppContainer
 import com.example.financialliteracyapp.domain.economy.Balance
 import com.example.financialliteracyapp.domain.economy.GameRules
@@ -58,22 +57,9 @@ fun MainScreen(
         else -> "Малыш"
     }
 
-    // Кастомизация из сущности: тело × аксессуар × фон (как выбрано в онбординге)
+    // Кастомизация из сущности: тело (как выбрано в онбординге / внешний вид)
     val petBody = pet?.bodyType ?: 0
-    val petAcc = pet?.accessory ?: 0
-    val petBg = pet?.background ?: 0
-    val bodyTypes = listOf("🦝", "🦝", "🦝")
-    val accessories = listOf("", "🧣", "🧢")
-    val backgrounds = listOf("🏪", "🌳", "🌊")
-
-    // Эмодзи самочувствия (показываем как bейдж над персонажем)
-    val stateEmoji = when {
-        hunger < 30 -> "😿"
-        energy < 30 -> "😴"
-        mood < 30 -> "🙀"
-        hunger < 60 || mood < 60 -> "😾"
-        else -> "😺"
-    }
+    val bodyIcons = listOf(R.drawable.ic_pet_raccoon, R.drawable.ic_pet_raccoon_gray, R.drawable.ic_pet_raccoon_pink)
 
     val cash = wallet?.cash ?: 500
     val needPlan = wallet?.needPlan ?: 0
@@ -126,81 +112,21 @@ fun MainScreen(
 
         Spacer(Modifier.height(4.dp))
 
-        // Window at top center
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(76.dp)
-                    .height(76.dp)
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = listOf(Color(0xFF87CEEB), Color(0xFF7CFC00)),
-                            start = Offset.Zero,
-                            end = Offset(0f, 76f)
-                        )
-                    )
-                    .border(width = 3.dp, color = Color(0xFF6B4C3A), shape = RoundedCornerShape(4.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("🪟", fontSize = 32.sp)
-            }
-        }
-
-        Spacer(Modifier.height(4.dp))
-
-        // Custom pet on rug - left side, Bed right side
+        // Pet on scene - left side, Bed right side
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Pet area left
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Rug
-                Box(
-                    modifier = Modifier
-                        .width(112.dp)
-                        .height(38.dp)
-                        .background(Color(0xFF5C3A21))
-                        .clip(RoundedCornerShape(50.dp))
-                        .border(width = 3.dp, color = Color(0xFFD2B48C))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // Character: только тело (без аксессуара и без badge-эмодзи)
+                Image(
+                    painterResource(bodyIcons[petBody]),
+                    contentDescription = null,
+                    modifier = Modifier.size(42.dp)
                 )
-                // Character on rug: фон (подушка) + тело + аксессуар
-                Box(
-                    modifier = Modifier
-                        .offset(y = (-32).dp)
-                        .size(56.dp)
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(Color(0xFFFFF3E0), Color(0xFFFFE0B2)),
-                                start = Offset.Zero,
-                                end = Offset(0f, 56f)
-                            ),
-                            RoundedCornerShape(14.dp)
-                        )
-                        .border(width = 2.dp, color = Color(0xFFD7CCC8), shape = RoundedCornerShape(14.dp))
-                        .padding(4.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(backgrounds[petBg], fontSize = 14.sp)
-                    Row(Modifier.offset(y = 5.dp)) {
-                        Text(bodyTypes[petBody], fontSize = 24.sp)
-                        if (accessories[petAcc].isNotBlank()) {
-                            Text(accessories[petAcc], fontSize = 12.sp)
-                        }
-                    }
-                }
-                // Badge настроения
-                Text(
-                    stateEmoji,
-                    fontSize = 14.sp,
-                    modifier = Modifier.offset(x = 34.dp, y = (-44).dp)
-                )
+                Spacer(Modifier.height(10.dp))
             }
 
             // Bed right side (not clickable — sleep via button below)

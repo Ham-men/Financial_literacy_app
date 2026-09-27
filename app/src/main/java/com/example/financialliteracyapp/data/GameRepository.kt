@@ -167,12 +167,12 @@ class GameRepository(private val db: AppDatabase) {
         }
         if (db.questDao().observeAll().first().isEmpty()) {
             val quests = listOf(
-                QuestEntity(topic = "PLANNING", title = "Три банки", description = "Разложи 300 ₡ так, чтобы хватило на корм и хоть что-то в копилку", reward = 50, order = 0),
-                QuestEntity(topic = "PLANNING", title = "Непредвиденный расход", description = "Финни порвал подстилку, нужно 50 ₡. Откуда взять: из желаемого или из копилки?", reward = 50, order = 1),
-                QuestEntity(topic = "SAVING", title = "Цель ближе", description = "Положи в копилку не меньше 50 ₡, увидь, как шкала цели подросла", reward = 50, order = 2),
-                QuestEntity(topic = "SAVING", title = "Не снимай сразу", description = "Соблазн купить торт из копилки; если снимаешь — подтверждаешь и видишь сдвиг срока", reward = 50, order = 3),
-                QuestEntity(topic = "SPENDING", title = "Сравни цены", description = "Два одинаковых корма, разная цена; купи дешевле (мини-игра «Найди дешевле»)", reward = 50, order = 4),
-                QuestEntity(topic = "SPENDING", title = "Сдача на кассе", description = "Клиент дал 100, товар 70; дай сдачу 30 (мини-игра «Касса»)", reward = 50, order = 5),
+                QuestEntity(topic = "PLANNING", title = "Три банки", description = "Разложи 300 ₡ так, чтобы хватило на корм и хоть что-то в копилку", reward = 50, order = 0, progress = 0, target = 300),
+                QuestEntity(topic = "PLANNING", title = "Непредвиденный расход", description = "Финни порвал подстилку, нужно 50 ₡. Откуда взять: из желаемого или из копилки?", reward = 50, order = 1, progress = 0, target = 1),
+                QuestEntity(topic = "SAVING", title = "Цель ближе", description = "Положи в копилку не меньше 50 ₡, увидь, как шкала цели подросла", reward = 50, order = 2, progress = 0, target = 50),
+                QuestEntity(topic = "SAVING", title = "Не снимай сразу", description = "Соблазн купить торт из копилки; если снимаешь — подтверждаешь и видишь сдвиг срока", reward = 50, order = 3, progress = 0, target = 1),
+                QuestEntity(topic = "SPENDING", title = "Сравни цены", description = "Два одинаковых корма, разная цена; купи дешевле (мини-игра «Найди дешевле»)", reward = 50, order = 4, progress = 0, target = 1),
+                QuestEntity(topic = "SPENDING", title = "Сдача на кассе", description = "Клиент дал 100, товар 70; дай сдачу 30 (мини-игра «Касса»)", reward = 50, order = 5, progress = 0, target = 1),
                 QuestEntity(topic = "PLAY", title = "Первая игрушка", description = "Купи игрушку для Финни в комнате развлечений и получи первый опыт", reward = 50, order = 6, progress = 0, target = 3),
                 QuestEntity(topic = "PLAY", title = "Уровень развлечений 2", description = "Набери 10 опыта с игрушками — копилка начнёт расти быстрее", reward = 70, order = 7, progress = 0, target = 10),
                 QuestEntity(topic = "PLAY", title = "Уровень развлечений 5", description = "Набери 25 опыта с игрушками — копилка получит максимальную ставку", reward = 120, order = 8, progress = 0, target = 25)
@@ -187,6 +187,15 @@ class GameRepository(private val db: AppDatabase) {
                     QuestEntity(topic = "PLAY", title = "Уровень развлечений 5", description = "Набери 25 опыта с игрушками — копилка получит максимальную ставку", reward = 120, order = 8, progress = 0, target = 25)
                 )
             )
+        }
+        // Исправление целей заданий на существующих установках (раньше target по умолчанию = 1),
+        // чтобы «Три банки» (300) и «Цель ближе» (50) имели корректную шкалу у старых БД.
+        val legacyTargets = mapOf(0 to 300, 1 to 1, 2 to 50, 3 to 1, 4 to 1, 5 to 1)
+        db.questDao().observeAll().first().forEach { q ->
+            val correctTarget = legacyTargets[q.order] ?: return@forEach
+            if (q.target != correctTarget) {
+                db.questDao().upsert(q.copy(target = correctTarget))
+            }
         }
         if (db.catalogItemDao().observeAll().first().isEmpty()) {
             val items = listOf(
@@ -297,6 +306,7 @@ class GameRepository(private val db: AppDatabase) {
             else -> return
         }
         db.walletDao().upsert(updated)
+        updateBankQuests()
     }
 
     /** «Вывести всё в мешок»: все деньги из всех банок обратно в мешок (cash). */
@@ -308,6 +318,7 @@ class GameRepository(private val db: AppDatabase) {
                 needPlan = 0, wantPlan = 0, savePlan = 0
             )
         )
+        updateBankQuests()
     }
 
     /** Перенос суммы из банки обратно в мешок (например «Снять» с копилки). */
@@ -321,6 +332,7 @@ class GameRepository(private val db: AppDatabase) {
             else -> return
         }
         db.walletDao().upsert(updated)
+        updateBankQuests()
     }
 
     /** Чит для теста: прибавить деньги напрямую в банку (карман/желаемое/копилка) без списания с мешка. */
@@ -334,6 +346,7 @@ class GameRepository(private val db: AppDatabase) {
             else -> return
         }
         db.walletDao().upsert(updated)
+        updateBankQuests()
     }
 
     /** Все доходы идут в мешок (cash). Распределение по банкам — только тут. */
@@ -343,6 +356,7 @@ class GameRepository(private val db: AppDatabase) {
         db.walletDao().upsert(
             w.copy(cash = alloc.cashRemainder, needPlan = alloc.need, wantPlan = alloc.want, savePlan = alloc.save)
         )
+        updateBankQuests()
     }
 
     suspend fun availableFor(category: String): Int {
@@ -378,6 +392,9 @@ class GameRepository(private val db: AppDatabase) {
         db.transactionDao().insert(
             insertTx(kind = "EXPENSE", category = "stock_purchase", amount = cost, buildingId = buildingId)
         )
+        if (supplierPricePerUnit <= (Balance.SUPPLIERS.minOfOrNull { it.pricePerUnit } ?: 2.0)) {
+            setQuestProgress(4, 1) // «Сравни цены»: купил у самого дешёвого поставщика
+        }
     }
 
     suspend fun takeItemFromBuilding(buildingId: Long, units: Int): Boolean {
@@ -764,6 +781,9 @@ class GameRepository(private val db: AppDatabase) {
         db.transactionDao().insert(
             insertTx(kind = "EXPENSE", category = "shop_purchase", amount = item.price)
         )
+        if (item.title == "Подстилка") {
+            setQuestProgress(1, 1) // «Непредвиденный расход»: купил подстилку
+        }
         updatePlayQuests(pet.xp + item.xpReward)
     }
 
@@ -775,14 +795,51 @@ class GameRepository(private val db: AppDatabase) {
             if (newProgress <= quest.progress) continue
             val done = newProgress >= quest.target
             db.questDao().upsert(quest.copy(progress = newProgress, completed = done))
-            if (done) {
-                val wallet = db.walletDao().getOnce() ?: continue
-                db.walletDao().upsert(wallet.copy(cash = wallet.cash + quest.reward))
-                db.transactionDao().insert(
-                    insertTx(kind = "INCOME", category = "quest_reward", amount = quest.reward)
-                )
-            }
+            if (done) grantQuestReward(quest)
         }
+    }
+
+    /** Награда за выполненное задание: в мешок + транзакция INCOME quest_reward. */
+    private suspend fun grantQuestReward(quest: QuestEntity) {
+        val wallet = db.walletDao().getOnce() ?: return
+        db.walletDao().upsert(wallet.copy(cash = wallet.cash + quest.reward))
+        db.transactionDao().insert(
+            insertTx(kind = "INCOME", category = "quest_reward", amount = quest.reward)
+        )
+    }
+
+    /** Установить прогресс задания (монотонно): не опускает, при достижении цели — награда. */
+    private suspend fun setQuestProgress(order: Int, value: Int) {
+        val quest = db.questDao().observeAll().first().find { it.order == order && !it.completed } ?: return
+        if (quest.target <= 0) return
+        val newProgress = value.coerceAtMost(quest.target)
+        if (newProgress <= quest.progress) return
+        val done = newProgress >= quest.target
+        db.questDao().upsert(quest.copy(progress = newProgress, completed = done))
+        if (done) grantQuestReward(quest)
+    }
+
+    /** Продвинуть задание на delta (для счётных заданий с target > 1). */
+    private suspend fun advanceQuest(order: Int, delta: Int) {
+        val quest = db.questDao().observeAll().first().find { it.order == order && !it.completed } ?: return
+        setQuestProgress(order, quest.progress + delta)
+    }
+
+    /**
+     * Задание «Три банки» (order 0): прогресс = сумма, разложенная по 3 банкам.
+     * Завершается, когда разложено 300 ₡ И хватает на корм (нужное ≥20) И есть копилка (save>0).
+     */
+    private suspend fun updateBankQuests() {
+        val w = db.walletDao().getOnce() ?: return
+        val total = w.needPlan + w.wantPlan + w.savePlan
+        setQuestProgress(2, w.savePlan + w.saveFact) // «Цель ближе»: сумма в копилке/целях
+        val q0 = db.questDao().observeAll().first().find { it.order == 0 && !it.completed } ?: return
+        if (q0.target <= 0) return
+        val prog = total.coerceAtMost(q0.target)
+        val done = prog >= q0.target && w.needPlan >= Balance.FEED_COST && w.savePlan > 0
+        if (prog <= q0.progress && !done) return
+        db.questDao().upsert(q0.copy(progress = prog, completed = done))
+        if (done) grantQuestReward(q0)
     }
 
     // --- Цели ---
@@ -838,6 +895,7 @@ class GameRepository(private val db: AppDatabase) {
         db.transactionDao().insert(
             insertTx(kind = "EXPENSE", category = "goal_deposit", amount = amount)
         )
+        updateBankQuests()
     }
 
     /** Снятие с цели: деньги возвращаются В КОПИЛКУ (savePlan), а не в мешок. */
@@ -851,5 +909,11 @@ class GameRepository(private val db: AppDatabase) {
         db.transactionDao().insert(
             insertTx(kind = "INCOME", category = "goal_withdraw", amount = amount)
         )
+        setQuestProgress(3, 1) // «Не снимай сразу»: подтвердил снятие и увидел сдвиг срока
+    }
+
+    /** Верная сдача в мини-игре «Касса» (BuildingCashierScreen) → задание «Сдача на кассе». */
+    suspend fun reportCorrectChange() {
+        setQuestProgress(5, 1)
     }
 }

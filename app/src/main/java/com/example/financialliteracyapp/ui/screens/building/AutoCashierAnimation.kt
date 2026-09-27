@@ -3,11 +3,13 @@ package com.example.financialliteracyapp.ui.screens.building
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,9 +23,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.financialliteracyapp.R
 import com.example.financialliteracyapp.data.clock.GameClock
 import com.example.financialliteracyapp.domain.economy.GameRules
 import com.example.financialliteracyapp.ui.theme.Accent
@@ -45,7 +49,6 @@ fun AutoCashierAnimation(
     stock: Int,
     price: Int,
     goodsEmoji: String,
-    workerEmoji: String,
     modifier: Modifier = Modifier
 ) {
     val bots = remember { mutableStateListOf<HiredBot>() }
@@ -83,7 +86,6 @@ fun AutoCashierAnimation(
                     shelf = shelf,
                     worker = worker,
                     goodsEmoji = goodsEmoji,
-                    workerEmoji = workerEmoji,
                     price = price,
                     onDone = { b -> if (bots.contains(b)) bots.remove(b) }
                 )
@@ -100,7 +102,6 @@ private fun HiredBotWalker(
     shelf: Offset,
     worker: Offset,
     goodsEmoji: String,
-    workerEmoji: String,
     price: Int,
     onDone: (HiredBot) -> Unit
 ) {
@@ -130,7 +131,11 @@ private fun HiredBotWalker(
     }
 
     Box(modifier = Modifier.offset { IntOffset(x.value.roundToInt(), y.value.roundToInt()) }) {
-        Text("🤖", fontSize = 20.sp)
+        Image(
+            painterResource(R.drawable.ic_bot_student),
+            contentDescription = null,
+            modifier = Modifier.size(20.dp)
+        )
         if (grabbed && !paid) {
             Text(
                 "+${bot.units} $goodsEmoji",
@@ -144,11 +149,6 @@ private fun HiredBotWalker(
                 "💸 ${bot.units * price} ₡",
                 fontSize = 10.sp,
                 modifier = Modifier.padding(start = 18.dp, top = 2.dp)
-            )
-            Text(
-                "→ $workerEmoji",
-                fontSize = 9.sp,
-                modifier = Modifier.padding(start = 18.dp, top = 14.dp)
             )
         }
     }

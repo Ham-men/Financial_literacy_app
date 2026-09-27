@@ -1,5 +1,6 @@
 package com.example.financialliteracyapp.ui.screens.onboarding
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -12,11 +13,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.financialliteracyapp.R
 import com.example.financialliteracyapp.data.AppContainer
 import com.example.financialliteracyapp.data.local.entity.PetEntity
 import com.example.financialliteracyapp.data.prefs.UserPrefs
@@ -38,7 +41,12 @@ private val decisions = listOf(
     OnboardingDecision("save", "Копилка", "На цель: мячик, палатка, набор художника", "🐷", Color(0xFFFFC107))
 )
 
-private val bodyTypes = listOf("🦝", "🦝", "🦝") // 0=рыжий, 1=серый, 2=пятнистый
+private val bodyIcons = listOf( // 0=рыжий, 1=серый, 2=розовый
+    R.drawable.ic_pet_raccoon,
+    R.drawable.ic_pet_raccoon_gray,
+    R.drawable.ic_pet_raccoon_pink
+)
+private val bodyNames = listOf("Рыжий", "Серый", "Розовый")
 private val accessories = listOf("", "🧣", "🧢") // 0=без, 1=шарф, 2=кепка
 private val backgrounds = listOf("🏪", "🌳", "🌊") // 0=рынок, 1=парк, 2=речка
 
@@ -220,8 +228,12 @@ private fun CustomizeStep(
                 ) {
                     Text(backgrounds[selectedBackground], fontSize = 44.sp)
                     Spacer(Modifier.height(-12.dp))
-                    Row(horizontalArrangement = Arrangement.Center) {
-                        Text(bodyTypes[selectedBody], fontSize = 34.sp)
+                    Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painterResource(bodyIcons[selectedBody]),
+                            contentDescription = null,
+                            modifier = Modifier.size(34.dp)
+                        )
                         if (accessories[selectedAccessory].isNotBlank()) {
                             Text(accessories[selectedAccessory], fontSize = 18.sp)
                         }
@@ -233,16 +245,20 @@ private fun CustomizeStep(
 
             // Селекторы
             Column(Modifier.weight(1f)) {
-                SelectorRow("Тело", bodyTypes, selectedBody, onBodyChange) { text, sel ->
-                    Text(text, fontSize = 22.sp)
+                SelectorRow("Тело", bodyNames, selectedBody, onBodyChange) { index, isSel ->
+                    Image(
+                        painterResource(bodyIcons[index]),
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
                 Spacer(Modifier.height(6.dp))
-                SelectorRow("Аксессуар", accessories.map { if (it.isBlank()) "нет" else it }, selectedAccessory, onAccessoryChange) { text, sel ->
-                    if (text == "нет") Text("➖", fontSize = 14.sp) else Text(text, fontSize = 14.sp)
+                SelectorRow("Аксессуар", accessories.map { if (it.isBlank()) "нет" else it }, selectedAccessory, onAccessoryChange) { i, isSel ->
+                    if (accessories[i].isBlank()) Text("➖", fontSize = 14.sp) else Text(accessories[i], fontSize = 14.sp)
                 }
                 Spacer(Modifier.height(6.dp))
-                SelectorRow("Фон", backgrounds, selectedBackground, onBackgroundChange) { text, sel ->
-                    Text(text, fontSize = 16.sp)
+                SelectorRow("Фон", backgrounds, selectedBackground, onBackgroundChange) { i, isSel ->
+                    Text(backgrounds[i], fontSize = 16.sp)
                 }
             }
         }
@@ -258,7 +274,7 @@ private fun SelectorRow(
     options: List<String>,
     selected: Int,
     onChange: (Int) -> Unit,
-    content: @Composable (String, Boolean) -> Unit
+    content: @Composable (Int, Boolean) -> Unit
 ) {
     Column(Modifier.fillMaxWidth()) {
         Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -267,7 +283,7 @@ private fun SelectorRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            options.forEachIndexed { index, option ->
+            options.forEachIndexed { index, _ ->
                 val isSelected = index == selected
                 Box(
                     modifier = Modifier
@@ -286,7 +302,7 @@ private fun SelectorRow(
                         .clickable { onChange(index) },
                     contentAlignment = Alignment.Center
                 ) {
-                    content(option, isSelected)
+                    content(index, isSelected)
                 }
             }
         }

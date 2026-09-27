@@ -62,4 +62,8 @@ dependencies {
 
     // Unit-тесты (Этап 2)
     testImplementation(libs.junit)
+
+    // Инструментированные тесты (androidTest) — ExampleInstrumentedTest
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
 }

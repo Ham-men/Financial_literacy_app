@@ -61,7 +61,7 @@
             android:id="@+id/ivMood"
             android:layout_width="24dp"
             android:layout_height="24dp"
-            android:src="@drawable/ic_pet_raccoon_happy"
+            android:src="@drawable/ic_pet_raccoon_happy2"
             android:contentDescription="Настроение" />
     </LinearLayout>
 </androidx.cardview.widget.CardView>

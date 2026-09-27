@@ -1,5 +1,6 @@
 package com.example.financialliteracyapp.ui.screens.kiosk
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,10 +10,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.financialliteracyapp.R
 import com.example.financialliteracyapp.domain.economy.Balance
 import com.example.financialliteracyapp.ui.theme.*
 import kotlinx.coroutines.launch
@@ -97,11 +100,11 @@ fun HireScreen(
                         .background(Color(0xFF6D4C41), RoundedCornerShape(6.dp))
                 )
                 if (hired) {
-                    // Нанятый сотрудник сидит за столом
-                    Text(
-                        "🧑‍💼",
-                        fontSize = 34.sp,
-                        modifier = Modifier.align(Alignment.Center).offset(x = 0.dp, y = (-34).dp)
+                    // Нанятый сотрудник сидит за столом (XML-иконка кассира)
+                    Image(
+                        painterResource(R.drawable.ic_bot_worker),
+                        contentDescription = null,
+                        modifier = Modifier.size(34.dp).align(Alignment.Center).offset(x = 0.dp, y = (-34).dp)
                     )
                     Text(
                         "✅ работает",

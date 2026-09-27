@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -23,6 +24,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -30,6 +32,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.example.financialliteracyapp.R
 import com.example.financialliteracyapp.data.AppContainer
 import com.example.financialliteracyapp.data.clock.GameClock
 import com.example.financialliteracyapp.domain.economy.BotBrain
@@ -182,7 +185,8 @@ fun BuildingCashierScreen(
                 price = price,
                 queue = queue.toList(),
                 served = served,
-                onServe = ::serve
+                onServe = ::serve,
+                onCorrectChange = { scope.launch { repo.reportCorrectChange() } }
             )
         }
     }
@@ -276,7 +280,11 @@ private fun BuildCashierRoom(
             Text("$price ₡/шт", fontSize = 9.sp, color = Color.White)
         }
         // Финни
-        Text("🦝", fontSize = 36.sp, modifier = Modifier.align(Alignment.Center).padding(bottom = 80.dp))
+        Image(
+            painterResource(R.drawable.ic_pet_raccoon),
+            contentDescription = null,
+            modifier = Modifier.size(36.dp).align(Alignment.Center).padding(bottom = 80.dp)
+        )
         // Пол
         Box(
             Modifier
@@ -301,15 +309,17 @@ private fun BuildCashierRoom(
         }
         // Очередь у кассы
         queue.take(6).forEachIndexed { i, _ ->
-            Text(
-                "🧑",
-                fontSize = 20.sp,
-                modifier = Modifier.offset {
-                    IntOffset(
-                        (cashPos.x - 24.dp.toPx() - 22.dp.toPx() * i).roundToInt().coerceAtLeast(10),
-                        cashPos.y.toInt()
-                    )
-                }
+            Image(
+                painterResource(R.drawable.ic_bot_student),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(20.dp)
+                    .offset {
+                        IntOffset(
+                            (cashPos.x - 24.dp.toPx() - 22.dp.toPx() * i).roundToInt().coerceAtLeast(10),
+                            cashPos.y.toInt()
+                        )
+                    }
             )
         }
 
@@ -378,7 +388,11 @@ private fun RoomRobotView(
             IntOffset(x.value.roundToInt(), y.value.roundToInt())
         }
     ) {
-        Text("🤖", fontSize = 26.sp)
+        Image(
+            painterResource(R.drawable.ic_bot_student),
+            contentDescription = null,
+            modifier = Modifier.size(24.dp)
+        )
         if (grabbed) {
             Text(
                 "+${bot.units} 🧃",
@@ -398,7 +412,8 @@ private fun CashierCounter(
     price: Int,
     queue: List<KioskCustomer>,
     served: Int,
-    onServe: (KioskCustomer) -> Unit
+    onServe: (KioskCustomer) -> Unit,
+    onCorrectChange: () -> Unit
 ) {
     Column(
         modifier
@@ -456,6 +471,7 @@ private fun CashierCounter(
         // После выбора ответа показываем вердикт и переходим к следующему покупателю.
         LaunchedEffect(customer.id, answer) {
             if (answer != null) {
+                if (answer == payment?.change) onCorrectChange()
                 delay(1500)
                 onServe(customer)
             }

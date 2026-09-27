@@ -39,7 +39,7 @@ private data class Payment(val paid: Int, val change: Int)
  * «Живая касса» ларька (вместо мини-игры «Касса»):
  * покупатель берёт товар на полках (сцена), игрок тащит товар в кассу,
  * видит сумму, бот платит, игрок выдаёт сдачу и завершает продажу.
- * Если нанята Мила — она пробивает очередь сама.
+ * Если нанят кассир — он пробивает очередь сам.
  */
 @Composable
 fun CashierScene(
@@ -82,7 +82,7 @@ fun CashierScene(
     }
 }
 
-/** Мила-кассир пробивает очередь автоматически (продажи запускаются на уровне экрана, из любой вкладки). */
+/** Кассир пробивает очередь автоматически (продажи запускаются на уровне экрана, из любой вкладки). */
 @Composable
 private fun HiredCashier(
     queue: List<KioskCustomer>,
@@ -92,10 +92,10 @@ private fun HiredCashier(
     val first = queue.firstOrNull()
     if (first != null) {
         AppCard(modifier = Modifier.padding(16.dp)) {
-            Text("👩 Мила обслуживает очередь…", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text("Кассир обслуживает очередь…", fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Spacer(Modifier.height(8.dp))
             Text(
-                "Осталось покупателей: ${queue.size}. Мила берёт на кассе сам — ${first.units} шт. 🧃",
+                "Осталось покупателей: ${queue.size}. Кассир берёт на кассе сам — ${first.units} шт. 🧃",
                 fontSize = 13.sp,
                 color = TextSecondary
             )

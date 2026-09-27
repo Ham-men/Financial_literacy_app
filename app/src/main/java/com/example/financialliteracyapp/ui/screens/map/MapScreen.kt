@@ -1,5 +1,6 @@
 package com.example.financialliteracyapp.ui.screens.map
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,10 +15,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.financialliteracyapp.R
 import com.example.financialliteracyapp.data.AppContainer
 import com.example.financialliteracyapp.data.local.entity.BuildingEntity
 import com.example.financialliteracyapp.ui.theme.Primary
@@ -33,12 +36,20 @@ data class Plot(
     val buildingType: String? = null   // если на этом участке стоит магазин игрока
 )
 
-/** Эмодзи магазина игрока по типу здания. */
-private fun buildingEmoji(type: String) = when (type) {
-    "PRODUCTS" -> "🛒"
-    "CONSTRUCTION" -> "🔧"
-    "AUTO_SERVICE" -> "🚗"
-    else -> "🏪"
+/** Иконка магазина игрока по типу здания. */
+private fun buildingIcon(type: String) = when (type) {
+    "PRODUCTS" -> R.drawable.ic_shop_kiosk
+    "CONSTRUCTION" -> R.drawable.ic_construction
+    "AUTO_SERVICE" -> R.drawable.ic_shop_grocery
+    else -> R.drawable.ic_shop_kiosk
+}
+
+/** Иконка занятого участка «района» по эмодзи. */
+private fun plotIcon(emoji: String): Int? = when (emoji) {
+    "🌳" -> R.drawable.ic_tree
+    "🏠" -> R.drawable.ic_district_tech
+    "🏢", "🏭" -> R.drawable.ic_district_market
+    else -> null
 }
 
 /** Название магазина игрока по типу здания. */
@@ -190,7 +201,7 @@ private fun PlotItem(
     val miniGrid = plot.miniGrid
 
     // Магазин игрока на этом участке (своё здание или купленный магазин)
-    val storeEmoji = ownedBuilding?.let { buildingEmoji(it.type) } ?: if (purchasedHere) "🏪" else null
+    val storeIconRes = ownedBuilding?.let { buildingIcon(it.type) } ?: if (purchasedHere) R.drawable.ic_shop_kiosk else null
     val storeName = ownedBuilding?.let { buildingName(it.type) } ?: if (purchasedHere) "Магазин" else null
 
     // == Сложный участок с мини-сеткой жилого двора + магазином игрока ==
@@ -237,7 +248,13 @@ private fun PlotItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(storeEmoji ?: "🏪", fontSize = 20.sp)
+                        if (storeIconRes != null) {
+                            Image(
+                                painterResource(storeIconRes),
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                         storeName?.let {
                             Text(it, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             Text("куплено", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color(0xFF81C784))
@@ -264,7 +281,13 @@ private fun PlotItem(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                Text(storeEmoji ?: "🏪", fontSize = 32.sp)
+                if (storeIconRes != null) {
+                    Image(
+                        painterResource(storeIconRes),
+                        contentDescription = null,
+                        modifier = Modifier.size(34.dp)
+                    )
+                }
                 storeName?.let {
                     Text(it, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.Center)
                     Text("куплено", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
@@ -286,7 +309,11 @@ private fun PlotItem(
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("🏠", fontSize = 32.sp)
+                Image(
+                    painterResource(R.drawable.ic_district_tech),
+                    contentDescription = null,
+                    modifier = Modifier.size(34.dp)
+                )
                 Text("ДОМ", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black)
             }
         }
@@ -320,6 +347,15 @@ private fun PlotItem(
             .border(width = 2.dp, color = Color(0xFF555555)),
         contentAlignment = Alignment.Center
     ) {
-        Text(if (plot.emoji.isEmpty()) "·" else plot.emoji, fontSize = 32.sp)
+        val iconRes = if (plot.emoji.isEmpty()) null else plotIcon(plot.emoji)
+        if (iconRes != null) {
+            Image(
+                painterResource(iconRes),
+                contentDescription = null,
+                modifier = Modifier.size(30.dp)
+            )
+        } else {
+            Text(if (plot.emoji.isEmpty()) "·" else plot.emoji, fontSize = 32.sp)
+        }
     }
 }

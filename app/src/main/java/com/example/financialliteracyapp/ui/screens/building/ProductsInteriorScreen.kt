@@ -1,5 +1,6 @@
 package com.example.financialliteracyapp.ui.screens.building
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,10 +12,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.financialliteracyapp.R
 import com.example.financialliteracyapp.data.AppContainer
 import com.example.financialliteracyapp.ui.theme.*
 
@@ -80,7 +83,7 @@ fun ProductsInteriorScreen(
                     Spacer(Modifier.weight(1f))
 
                     // Right area - hired worker (или пусто до найма)
-                    HiredWorkerSlot(hired = hired, workerEmoji = "🧑‍💼", label = if (hired) "кассир" else "место")
+                    HiredWorkerSlot(hired = hired, label = if (hired) "кассир" else "место")
                 }
 
                 // Авто-касса нанятого сотрудника (боты платят без сдачи)
@@ -90,7 +93,6 @@ fun ProductsInteriorScreen(
                         stock = stock,
                         price = price,
                         goodsEmoji = "🥤",
-                        workerEmoji = "🧑‍💼",
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -179,16 +181,24 @@ private fun GoodsShelfBay(stock: Int) {
 }
 
 @Composable
-private fun HiredWorkerSlot(hired: Boolean, workerEmoji: String, label: String) {
+private fun HiredWorkerSlot(hired: Boolean, label: String) {
     Column(
         horizontalAlignment = Alignment.End,
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        Text(
-            if (hired) workerEmoji else "🪑",
-            fontSize = if (hired) 30.sp else 24.sp,
-            color = if (hired) Color.Unspecified else Color(0xFFBDBDBD)
-        )
+        if (hired) {
+            Image(
+                painterResource(R.drawable.ic_bot_worker),
+                contentDescription = null,
+                modifier = Modifier.size(30.dp)
+            )
+        } else {
+            Text(
+                "🪑",
+                fontSize = 24.sp,
+                color = Color(0xFFBDBDBD)
+            )
+        }
         Text(label, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.Black, textAlign = TextAlign.Center)
     }
 }

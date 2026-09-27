@@ -1,5 +1,9 @@
 package com.example.financialliteracyapp.ui.navigation
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.pm.ActivityInfo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
@@ -140,6 +144,19 @@ fun AppNavGraph(
     val tutorialIndex by tutorialVm.index.collectAsState()
     val tutorialSteps by tutorialVm.steps.collectAsState()
     val scope = rememberCoroutineScope()
+
+    val activity = remember(context) { context.findActivity() }
+
+    // Во время обучения — только портрет (переворот заблокирован); после — свободный поворот.
+    LaunchedEffect(tutorialActive) {
+        val act = activity
+        if (act != null) {
+            act.requestedOrientation = if (tutorialActive)
+                ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            else
+                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
 
     // Автозапуск после онбординга при первом входе в игру
     LaunchedEffect(start, tutorialDone) {
@@ -504,4 +521,13 @@ private fun navigateToTab(navController: NavHostController, route: String) {
         popUpTo(Routes.MAIN)
         launchSingleTop = true
     }
+}
+
+private fun Context.findActivity(): Activity? {
+    var c = this
+    while (c is ContextWrapper) {
+        if (c is Activity) return c
+        c = c.baseContext
+    }
+    return null
 }

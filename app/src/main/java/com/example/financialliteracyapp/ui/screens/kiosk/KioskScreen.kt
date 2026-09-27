@@ -3,6 +3,7 @@ package com.example.financialliteracyapp.ui.screens.kiosk
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,12 +18,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.financialliteracyapp.R
 import com.example.financialliteracyapp.data.AppContainer
 import com.example.financialliteracyapp.domain.economy.BotBrain
 import com.example.financialliteracyapp.ui.components.AppCard
@@ -77,7 +80,7 @@ fun KioskScreen(
         }
     }
 
-    // Мила-кассир пробивает сама: одна покупка раз в ~1.2 с (из любой вкладки)
+    // Кассир пробивает сам: одна покупка раз в ~1.2 с (из любой вкладки)
     LaunchedEffect(cashierHired, queue.firstOrNull()?.id) {
         if (cashierHired) {
             val c = queue.firstOrNull() ?: return@LaunchedEffect
@@ -130,14 +133,22 @@ fun KioskScreen(
                 "🏷" to "Цена",
                 "🧾" to "Касса",
                 "📊" to "Учёт",
-                "👩" to "Найм"
+                "🤖" to "Найм"
             ).forEachIndexed { i, (emoji, label) ->
                 Tab(
                     selected = tab == i,
                     onClick = { tab = i },
                     text = {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(emoji, fontSize = 14.sp)
+                            if (i == 6) {
+                                Image(
+                                    painterResource(R.drawable.ic_bot_worker),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            } else {
+                                Text(emoji, fontSize = 14.sp)
+                            }
                             Text(label, fontSize = 8.sp, maxLines = 1)
                         }
                     }
@@ -243,13 +254,21 @@ fun KioskScreen(
                             .clickable { tab = 6 },
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(if (cashierHired) "👩" else "🪑", fontSize = 30.sp)
-                        HotspotTag(if (cashierHired) "Мила · касса" else "Нанять кассира", enabled = true)
+                        if (cashierHired) {
+                            Image(
+                                painterResource(R.drawable.ic_bot_worker),
+                                contentDescription = null,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        } else {
+                            Text("🪑", fontSize = 30.sp)
+                        }
+                        HotspotTag(if (cashierHired) "Кассир · касса" else "Нанять кассира", enabled = true)
                     }
-                    Text(
-                        "🦝",
-                        fontSize = 46.sp,
-                        modifier = Modifier.align(Alignment.Center).padding(bottom = 90.dp)
+                    Image(
+                        painterResource(R.drawable.ic_pet_raccoon),
+                        contentDescription = null,
+                        modifier = Modifier.size(46.dp).align(Alignment.Center).padding(bottom = 90.dp)
                     )
                     Box(
                         Modifier
@@ -275,9 +294,17 @@ fun KioskScreen(
                             .clickable { tab = 4 },
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(if (cashierHired) "👩‍💻" else "🧾", fontSize = 30.sp)
+                        if (cashierHired) {
+                            Image(
+                                painterResource(R.drawable.ic_bot_worker),
+                                contentDescription = null,
+                                modifier = Modifier.size(30.dp)
+                            )
+                        } else {
+                            Text("🧾", fontSize = 30.sp)
+                        }
                         HotspotTag(
-                            if (cashierHired) "Касса · Мила" else "Касса",
+                            if (cashierHired) "Касса · кассир" else "Касса",
                             enabled = true
                         )
                     }
@@ -298,15 +325,17 @@ fun KioskScreen(
                         )
                     }
                     queue.take(6).forEachIndexed { i, _ ->
-                        Text(
-                            "🧑",
-                            fontSize = 24.sp,
-                            modifier = Modifier.offset {
-                                IntOffset(
-                                    (cash.x - 30.dp.toPx() - 28.dp.toPx() * i).roundToInt(),
-                                    cash.y.toInt()
-                                )
-                            }
+                        Image(
+                            painterResource(R.drawable.ic_bot_student),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .offset {
+                                    IntOffset(
+                                        (cash.x - 30.dp.toPx() - 28.dp.toPx() * i).roundToInt(),
+                                        cash.y.toInt()
+                                    )
+                                }
                         )
                     }
 
@@ -343,10 +372,10 @@ fun KioskScreen(
                 Text(
                     if (stock > 0)
                         "Покупатели заходят, берут товар с полок и встают к кассе 🧾." +
-                        (if (cashierHired) "\nМила-кассир 👩 пробивает очередь сама." else "\nОбслужи их на кассе: вкладка «Касса» 🧾.")
+                        (if (cashierHired) "\nКассир пробивает очередь сам." else "\nОбслужи их на кассе: вкладка «Касса» 🧾.")
                     else
                         "Полки пусты. «Закупка» 📦 — купи лимонад, потом расставь его на полки." +
-                        (if (cashierHired) "\nМила-кассир 👩 уже на месте, но товара нет." else "\nСтул у кассы пустует — вкладка «Найм» 👩."),
+                        (if (cashierHired) "\nКассир уже на месте, но товара нет." else "\nСтул у кассы пустует — вкладка «Найм» 🤖."),
                     fontSize = 13.sp,
                     color = TextSecondary,
                     textAlign = TextAlign.Center,
@@ -375,7 +404,7 @@ fun KioskScreen(
                     Spacer(Modifier.height(8.dp))
                     Text(
                         if (cashierHired)
-                            "Мила считает кассу сама — смотреть можно в любой вкладке."
+                            "Кассир считает кассу сам — смотреть можно в любой вкладке."
                         else
                             "Сменить цену — подвкладка «Цена» 🏷️, обслужить покупателей — «Касса» 🧾.",
                         fontSize = 12.sp,
@@ -444,7 +473,11 @@ private fun ArrivingBotView(
             IntOffset(x.value.roundToInt(), y.value.roundToInt())
         }
     ) {
-        Text("🤖", fontSize = 32.sp)
+        Image(
+            painterResource(R.drawable.ic_bot_student),
+            contentDescription = null,
+            modifier = Modifier.size(32.dp)
+        )
         if (grabbed) {
             Text(
                 "+${bot.units} 🧃",

@@ -28,8 +28,9 @@ import kotlin.math.sin
 
 /** Центр точки-цели стрелки обучения в долях экрана (0..1). */
 private fun spotCenter(spot: Spot): Offset = when (spot) {
-    Spot.SIDEBAR -> Offset(0.04f, 0.5f)
-    Spot.HUD -> Offset(0.5f, 0.06f)
+    // Обучение всегда в портрете: «меню слева» превращается в панель внизу экрана
+    Spot.SIDEBAR -> Offset(0.5f, 0.9f)
+    Spot.HUD -> Offset(0.5f, 0.08f)
     Spot.TOP_LEFT -> Offset(0.18f, 0.14f)
     Spot.TOP_CENTER -> Offset(0.5f, 0.14f)
     Spot.TOP_RIGHT -> Offset(0.84f, 0.12f)
@@ -41,6 +42,10 @@ private fun spotCenter(spot: Spot): Offset = when (spot) {
     Spot.BOTTOM_RIGHT -> Offset(0.82f, 0.7f)
 }
 
+/** Перенос карточки на противоположную сторону от цели:
+ *  цель внизу (y>0.5) → карточка сверху; цель вверху → карточка снизу. */
+private fun cardAbove(spot: Spot): Boolean = spotCenter(spot).y > 0.5f
+
 /** Оверлей обучения: затемнение, выделенная область, стрелка и карточка с текстом. */
 @Composable
 fun TutorialOverlay(
@@ -51,6 +56,8 @@ fun TutorialOverlay(
     onNext: () -> Unit,
     onFinish: () -> Unit
 ) {
+    val cardAtTop = cardAbove(step.spot)
+
     Box(Modifier.fillMaxSize()) {
         // Затемняющий слой (блокирует тапы под собой)
         Box(
@@ -87,9 +94,11 @@ fun TutorialOverlay(
                 style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.5f)
             )
 
-            // Стрелка от карточки к цели
-            val cardTop = size.height - size.height * 0.26f
-            val start = Offset(size.width / 2f, cardTop - 6.dp.toPx())
+            // Стрелка от карточки к цели (карточка — на противоположной стороне от цели)
+            val start = if (cardAtTop)
+                Offset(size.width / 2f, size.height * 0.30f + 12.dp.toPx())
+            else
+                Offset(size.width / 2f, size.height - size.height * 0.30f - 12.dp.toPx())
             val end = Offset(cx, cy)
             val dx = end.x - start.x
             val dy = end.y - start.y
@@ -118,10 +127,10 @@ fun TutorialOverlay(
             }
         }
 
-        // Карточка с описанием
+        // Карточка с описанием (на противоположной стороне от цели)
         Surface(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
+                .align(if (cardAtTop) Alignment.TopCenter else Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 10.dp)
                 .border(2.dp, Color(0xFFFFEB3B), RoundedCornerShape(16.dp)),
